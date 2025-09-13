@@ -1450,9 +1450,6 @@ function spawnNote() {
 
 // Force spawn a new note immediately (for single-note flow)
 function forceSpawnNote() {
-  // Only for normal mode - piano mode uses regular timing
-  if (pianoModeActive) return;
-  
   // Reset spawn timing to allow immediate spawn
   lastNoteSpawn = 0;
   
@@ -2521,23 +2518,16 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       } else {
-        // Single note - use existing behavior with flashing
-        leftmostNote.flashing = true;
-        leftmostNote.flashStartTime = Date.now();
-        leftmostNote.flashCount = 0;
+        // Single note - destroy immediately and spawn new one (same behavior as chords)
+        const noteIndex = movingNotes.indexOf(leftmostNote);
+        if (noteIndex !== -1) {
+          movingNotes.splice(noteIndex, 1);
+          
+          // Spawn next note immediately for single-note flow
+          forceSpawnNote();
+        }
         
-        // Remove the note after the flashing is done
-        setTimeout(() => {
-          const noteIndex = movingNotes.indexOf(leftmostNote);
-          if (noteIndex !== -1) {
-            movingNotes.splice(noteIndex, 1);
-            
-            // Spawn next note immediately for single-note flow
-            forceSpawnNote();
-          }
-        }, 600); // 600ms total for two flashes (300ms each)
-        
-        feedback.textContent = ''; // Remove feedback about what the note should have been
+        feedback.textContent = `Wrong note! Note deleted.`;
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       }
