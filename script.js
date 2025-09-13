@@ -1231,6 +1231,20 @@ function drawExplosions() {
 
 // Check if there's enough space to spawn a new note without overlap
 function canSpawnNote(minDistance = 100) {
+  // Phase 1: Single-note flow implementation
+  if (window.StaveBetaPhase1?.gameState) {
+    const { active, mode } = window.StaveBetaPhase1.gameState;
+    
+    if (mode === 'piano') {
+      // Piano mode: maximum 1 note per clef (treble and bass)
+      return (!active.treble || !active.bass);
+    } else {
+      // Normal mode: maximum 1 active note total
+      return (!active.treble && !active.bass);
+    }
+  }
+  
+  // Fallback to original logic if Phase 1 not loaded
   if (movingNotes.length === 0) return true;
   
   // Find the rightmost note
@@ -1239,11 +1253,17 @@ function canSpawnNote(minDistance = 100) {
   }, movingNotes[0]);
   
   // Check if there's enough distance from the rightmost note to the spawn point
-  const spawnX = canvas.width + 20;
+  // Phase 1: Use clef-edge spawn position instead of far right
+  const spawnX = window.StaveBetaPhase1?.CLEF_ANCHORS?.treble?.rightX || 420; // Phase 1 clef-edge spawn
   const distance = spawnX - rightmostNote.x;
   
-  // Always allow spawning if there are fewer than 3 notes on screen to ensure gameplay continues
-  if (movingNotes.length < 3) {
+  // Phase 1: Stricter spawning - only 1 note at a time in normal mode
+  if (window.StaveBetaPhase1?.gameState?.mode !== 'piano') {
+    return movingNotes.length === 0;
+  }
+  
+  // Original logic for piano mode fallback
+  if (movingNotes.length < 2) { // At most 2 notes in piano mode
     return true;
   }
   
@@ -1290,19 +1310,26 @@ function spawnNote() {
     
     const noteData = pickRandomNote(); // Now returns note object directly or array for chords
     
-    // Speed increases more gradually from level 3 onward
+    // Phase 1: StaffWars-style speed calculation
     let baseSpeed;
-    if (level === 1) {
-      baseSpeed = 0.8; // Starting speed
-    } else if (level === 2) {
-      baseSpeed = 1.4; // 75% faster than level 1
-    } else if (level === 3) {
-      baseSpeed = 1.8; // More gradual increase from level 2
-    } else if (level === 4) {
-      baseSpeed = 2.2; // Gradual increase
+    if (typeof window.StaveBetaPhase1?.speedFor === 'function') {
+      // Use Phase 1 speed calculation (converts px/sec to current game units)
+      const elapsedInLevel = (Date.now() - gameStartTime) / 1000; // seconds since level start
+      baseSpeed = window.StaveBetaPhase1.speedFor(level, elapsedInLevel) / 120; // normalize to current scale
     } else {
-      // Slightly increased progression for higher levels (improved acceleration after level 3)
-      baseSpeed = 2.2 + (level - 4) * 0.4; // Each level adds 0.4 speed (increased from 0.3)
+      // Fallback to original logic
+      if (level === 1) {
+        baseSpeed = 0.8; // Starting speed
+      } else if (level === 2) {
+        baseSpeed = 1.4; // 75% faster than level 1
+      } else if (level === 3) {
+        baseSpeed = 1.8; // More gradual increase from level 2
+      } else if (level === 4) {
+        baseSpeed = 2.2; // Gradual increase
+      } else {
+        // Slightly increased progression for higher levels (improved acceleration after level 3)
+        baseSpeed = 2.2 + (level - 4) * 0.4; // Each level adds 0.4 speed (increased from 0.3)
+      }
     }
     
     // Piano Mode speed adjustment for note movement
@@ -1332,7 +1359,9 @@ function spawnNote() {
     // Handle chord mode (multiple notes)
     if (Array.isArray(noteData)) {
       // Spawn chord (multiple notes at once)
-      const baseX = canvas.width + 20;
+      // Phase 1: Use clef-edge spawning instead of far right
+      const clef = noteData[0]?.clef || currentClef;
+      const baseX = window.StaveBetaPhase1?.CLEF_ANCHORS?.[clef]?.rightX || 420; // Phase 1 clef-edge spawn
       const chordId = Date.now();
       
       noteData.forEach((singleNote, index) => {
@@ -1367,8 +1396,12 @@ function spawnNote() {
       });
     } else {
       // Create single moving note
+      // Phase 1: Use clef-edge spawning instead of far right
+      const clef = noteData.clef || currentClef;
+      const spawnX = window.StaveBetaPhase1?.CLEF_ANCHORS?.[clef]?.rightX || 420; // Phase 1 clef-edge spawn
+      
       const movingNote = {
-        x: canvas.width + 20, // Start from right side
+        x: spawnX, // Start from clef edge, not right side
         staffLocalIndex: noteData.staffLocalIndex,
         note: noteData.note,
         letter: noteData.letter,
@@ -1432,8 +1465,12 @@ function respawnNote() {
   }
   
   // Create moving note that slides across the staff using new data structure
+  // Phase 1: Use clef-edge spawning instead of far right
+  const clef = noteData.clef || currentClef;
+  const spawnX = window.StaveBetaPhase1?.CLEF_ANCHORS?.[clef]?.rightX || 420; // Phase 1 clef-edge spawn
+  
   const movingNote = {
-    x: canvas.width + 20, // Start from right side
+    x: spawnX, // Start from clef edge, not right side
     staffLocalIndex: noteData.staffLocalIndex,
     note: noteData.note,
     letter: noteData.letter,
@@ -1455,43 +1492,11 @@ function updateMovingNotes() {
   movingNotes.forEach((note, index) => {
     note.x -= note.speed;
     
-    // Check if note reached the green line (collision point) - use dynamic positioning
-    let greenLineCollisionX = 120; // Default fallback
-    let staffClef, clefX, clefY, staffBottomY;
+    // Check if note reached the clef collision point - Phase 1 uses fixed CLEF_HIT_X
+    const clefHitX = window.StaveBetaPhase1?.CLEF_HIT_X || 180; // Phase 1 clef collision point
     
-    // Get dynamic staff position based on current staff and note clef
-    if (currentClef === 'grand') {
-      if (note.clef === 'treble' && currentTrebleStave) {
-        greenLineCollisionX = currentTrebleStave.clefX + 35; // Green line position
-        staffClef = currentTrebleStave;
-        clefX = currentTrebleStave.clefX;
-        clefY = currentTrebleStave.clefY;
-        staffBottomY = currentTrebleStave.y + 64; // Bottom of treble staff
-      } else if (note.clef === 'bass' && currentBassStave) {
-        greenLineCollisionX = currentBassStave.clefX + 35; // Green line position
-        staffClef = currentBassStave;
-        clefX = currentBassStave.clefX;
-        clefY = currentBassStave.clefY;
-        staffBottomY = currentBassStave.y + 64; // Bottom of bass staff
-      }
-    } else {
-      if (currentClef === 'treble' && currentTrebleStave) {
-        greenLineCollisionX = currentTrebleStave.clefX + 35; // Green line position
-        staffClef = currentTrebleStave;
-        clefX = currentTrebleStave.clefX;
-        clefY = currentTrebleStave.clefY;
-        staffBottomY = currentTrebleStave.y + 64; // Bottom of staff
-      } else if (currentClef === 'bass' && currentBassStave) {
-        greenLineCollisionX = currentBassStave.clefX + 35; // Green line position
-        staffClef = currentBassStave;
-        clefX = currentBassStave.clefX;
-        clefY = currentBassStave.clefY;
-        staffBottomY = currentBassStave.y + 64; // Bottom of staff
-      }
-    }
-    
-    if (note.x < greenLineCollisionX) {
-      // Note hit the green line because player was too slow - lose a life and create explosion
+    if (note.x <= clefHitX) {
+      // Note hit the clef collision point because player was too slow - lose a life and create explosion
       
       // Clean up chord progress if this was part of a chord
       if (note.isChord && chordProgress.has(note.chordId)) {
@@ -1500,12 +1505,28 @@ function updateMovingNotes() {
       
       movingNotes.splice(index, 1);
       
-      // Create explosion at clef position, not at note position
-      let explosionX, explosionY;
-      explosionX = clefX; // Use clef X position for explosion
-      explosionY = clefY; // Use clef Y position for explosion
+      // Get clef position for explosion - simplified for Phase 1
+      let clefX = 35, clefY = canvas.height * 0.2 + 60; // Default fallback positions
       
-      createClefExplosion(explosionX, explosionY, 60, 500);
+      if (currentClef === 'grand') {
+        if (note.clef === 'treble' && currentTrebleStave) {
+          clefX = currentTrebleStave.clefX;
+          clefY = currentTrebleStave.clefY;
+        } else if (note.clef === 'bass' && currentBassStave) {
+          clefX = currentBassStave.clefX;
+          clefY = currentBassStave.clefY;
+        }
+      } else {
+        if (currentClef === 'treble' && currentTrebleStave) {
+          clefX = currentTrebleStave.clefX;
+          clefY = currentTrebleStave.clefY;
+        } else if (currentClef === 'bass' && currentBassStave) {
+          clefX = currentBassStave.clefX;
+          clefY = currentBassStave.clefY;
+        }
+      }
+      
+      createClefExplosion(clefX, clefY, 60, 500);
       
       lives--;
       
