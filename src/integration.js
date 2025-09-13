@@ -78,6 +78,11 @@ function syncGameState() {
   } else {
     gameState.mode = 'normal';
   }
+  
+  // Update canvas width dynamically
+  if (window.canvas) {
+    gameState.canvasWidth = window.canvas.width;
+  }
 }
 
 // Initialize the new system when this module loads
