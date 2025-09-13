@@ -1244,17 +1244,17 @@ function canSpawnNote(minDistance = 100) {
     return note.x > rightmost.x ? note : rightmost;
   }, movingNotes[0]);
   
-  // Calculate spawn position at right edge of clef (matches spawnNote function logic)
+  // Calculate spawn position at right edge of stave (matches spawnNote function logic)
   let spawnX = canvas.width + 20; // Default fallback
   if (currentClef === 'grand') {
-    // For grand staff, use treble clef position as reference
+    // For grand staff, use treble stave as reference
     if (currentTrebleStave) {
-      spawnX = currentTrebleStave.clefX + 30; // Right edge of clef
+      spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of stave
     }
   } else if (currentClef === 'treble' && currentTrebleStave) {
-    spawnX = currentTrebleStave.clefX + 30; // Right edge of treble clef
+    spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of treble stave
   } else if (currentClef === 'bass' && currentBassStave) {
-    spawnX = currentBassStave.clefX + 30; // Right edge of bass clef
+    spawnX = currentBassStave.x + currentBassStave.width; // Right edge of bass stave
   }
   
   // Check if there's enough distance from the rightmost note to the spawn point
@@ -1350,17 +1350,17 @@ function spawnNote() {
     // Handle chord mode (multiple notes)
     if (Array.isArray(noteData)) {
       // Spawn chord (multiple notes at once)
-      // Calculate spawn position at right edge of clef
+      // Calculate spawn position at right edge of stave
       let spawnX = canvas.width + 20; // Default fallback
       if (currentClef === 'grand') {
-        // For grand staff, use treble clef position (notes will be filtered by clef anyway)
+        // For grand staff, use treble stave position (notes will be filtered by clef anyway)
         if (currentTrebleStave) {
-          spawnX = currentTrebleStave.clefX + 30; // Right edge of clef
+          spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of stave
         }
       } else if (currentClef === 'treble' && currentTrebleStave) {
-        spawnX = currentTrebleStave.clefX + 30; // Right edge of treble clef
+        spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of treble stave
       } else if (currentClef === 'bass' && currentBassStave) {
-        spawnX = currentBassStave.clefX + 30; // Right edge of bass clef
+        spawnX = currentBassStave.x + currentBassStave.width; // Right edge of bass stave
       }
       const baseX = spawnX;
       const chordId = Date.now();
@@ -1397,19 +1397,19 @@ function spawnNote() {
       });
     } else {
       // Create single moving note
-      // Calculate spawn position at right edge of clef
+      // Calculate spawn position at right edge of stave
       let spawnX = canvas.width + 20; // Default fallback
       if (currentClef === 'grand') {
         // For grand staff, determine spawn position based on note's clef
         if (noteData.clef === 'treble' && currentTrebleStave) {
-          spawnX = currentTrebleStave.clefX + 30; // Right edge of treble clef
+          spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of treble stave
         } else if (noteData.clef === 'bass' && currentBassStave) {
-          spawnX = currentBassStave.clefX + 30; // Right edge of bass clef
+          spawnX = currentBassStave.x + currentBassStave.width; // Right edge of bass stave
         }
       } else if (currentClef === 'treble' && currentTrebleStave) {
-        spawnX = currentTrebleStave.clefX + 30; // Right edge of treble clef
+        spawnX = currentTrebleStave.x + currentTrebleStave.width; // Right edge of treble stave
       } else if (currentClef === 'bass' && currentBassStave) {
-        spawnX = currentBassStave.clefX + 30; // Right edge of bass clef
+        spawnX = currentBassStave.x + currentBassStave.width; // Right edge of bass stave
       }
       
       const movingNote = {
