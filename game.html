@@ -84,7 +84,7 @@
   </div>
 
   <!-- Piano Mode Controls -->
-  <div id="pianoModeControls" class="piano-mode-controls" style="display: none !important; visibility: hidden;">
+  <div id="pianoModeControls" class="piano-mode-controls" style="display: none;">
     <div class="piano-mode-header">
       <h3>🎹 Piano Mode</h3>
     </div>
@@ -110,6 +110,15 @@
           <input type="checkbox" id="pianoGrandStaffForce" checked>
           <span>Force Grand Staff</span>
         </label>
+      </div>
+      <div class="piano-option">
+        <label>
+          <input type="checkbox" id="pianoHardMode">
+          <span>Hard Mode (Split MIDI Input)</span>
+        </label>
+        <div class="hard-mode-info" id="hardModeInfo" style="display: none;">
+          <small>Bass: ≤B3 | Treble: ≥C4</small>
+        </div>
       </div>
     </div>
   </div>

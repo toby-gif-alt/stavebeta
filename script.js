@@ -1718,21 +1718,23 @@ function getNotesForPianoModeHand(hand, clef, availableNotes) {
   
   let handNotes = availableNotes.filter(note => note.clef === clef);
   
-  // Apply Piano Mode note range limits
-  if (clef === 'bass') {
-    // Bass clef: highest note should be B3
-    handNotes = handNotes.filter(note => {
-      const midi = note.midi || scientificToMidi(note.letter, note.octave);
-      const b3Midi = scientificToMidi('B', 3);
-      return midi <= b3Midi;
-    });
-  } else if (clef === 'treble') {
-    // Treble clef: lowest note should be C4  
-    handNotes = handNotes.filter(note => {
-      const midi = note.midi || scientificToMidi(note.letter, note.octave);
-      const c4Midi = scientificToMidi('C', 4);
-      return midi >= c4Midi;
-    });
+  // Apply strict Piano Mode note range limits only in hard mode
+  if (pianoModeSettings.hardMode) {
+    if (clef === 'bass') {
+      // Bass clef: highest note should be B3 (MIDI 59)
+      handNotes = handNotes.filter(note => {
+        const midi = note.midi || scientificToMidi(note.letter, note.octave);
+        const b3Midi = scientificToMidi('B', 3); // MIDI 59
+        return midi <= b3Midi;
+      });
+    } else if (clef === 'treble') {
+      // Treble clef: lowest note should be C4 (MIDI 60)
+      handNotes = handNotes.filter(note => {
+        const midi = note.midi || scientificToMidi(note.letter, note.octave);
+        const c4Midi = scientificToMidi('C', 4); // MIDI 60
+        return midi >= c4Midi;
+      });
+    }
   }
   
   return handNotes;
@@ -1793,35 +1795,78 @@ function pickRandomNote() {
     const rightHandActive = rightHandMode !== 'none';
     
     if (leftHandActive || rightHandActive) {
-      // Randomly choose which hand to generate for (weighted by which hands are active)
-      const activeHands = [];
-      if (leftHandActive) activeHands.push('left');
-      if (rightHandActive) activeHands.push('right');
-      
-      const chosenHand = activeHands[Math.floor(Math.random() * activeHands.length)];
-      
-      if (chosenHand === 'left' && leftHandActive) {
-        // Generate for left hand (bass clef)
+      // In hard mode, both clefs generate notes simultaneously when both hands are active
+      if (pianoModeSettings.hardMode && leftHandActive && rightHandActive) {
+        // Generate notes for both clefs simultaneously
         const bassNotes = getNotesForPianoModeHand(leftHandMode, 'bass', availableNotes);
+        const trebleNotes = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+        
+        const bothHandNotes = [];
+        
+        // Add bass note if available
         if (bassNotes.length > 0) {
           if (leftHandMode === 'chords' && bassNotes.length >= 2) {
-            return generateChord(bassNotes);
+            const bassChord = generateChord(bassNotes);
+            if (Array.isArray(bassChord)) {
+              bothHandNotes.push(...bassChord);
+            } else {
+              bothHandNotes.push(bassChord);
+            }
           } else {
-            // Melody mode or not enough notes for chord
-            const randomIndex = Math.floor(Math.random() * bassNotes.length);
-            return bassNotes[randomIndex];
+            const randomBassIndex = Math.floor(Math.random() * bassNotes.length);
+            bothHandNotes.push(bassNotes[randomBassIndex]);
           }
         }
-      } else if (chosenHand === 'right' && rightHandActive) {
-        // Generate for right hand (treble clef)
-        const trebleNotes = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+        
+        // Add treble note if available
         if (trebleNotes.length > 0) {
           if (rightHandMode === 'chords' && trebleNotes.length >= 2) {
-            return generateChord(trebleNotes);
+            const trebleChord = generateChord(trebleNotes);
+            if (Array.isArray(trebleChord)) {
+              bothHandNotes.push(...trebleChord);
+            } else {
+              bothHandNotes.push(trebleChord);
+            }
           } else {
-            // Melody mode or not enough notes for chord
-            const randomIndex = Math.floor(Math.random() * trebleNotes.length);
-            return trebleNotes[randomIndex];
+            const randomTrebleIndex = Math.floor(Math.random() * trebleNotes.length);
+            bothHandNotes.push(trebleNotes[randomTrebleIndex]);
+          }
+        }
+        
+        if (bothHandNotes.length > 0) {
+          return bothHandNotes; // Return array of notes for both clefs
+        }
+      } else {
+        // Normal Piano Mode behavior - randomly choose which hand to generate for
+        const activeHands = [];
+        if (leftHandActive) activeHands.push('left');
+        if (rightHandActive) activeHands.push('right');
+        
+        const chosenHand = activeHands[Math.floor(Math.random() * activeHands.length)];
+        
+        if (chosenHand === 'left' && leftHandActive) {
+          // Generate for left hand (bass clef)
+          const bassNotes = getNotesForPianoModeHand(leftHandMode, 'bass', availableNotes);
+          if (bassNotes.length > 0) {
+            if (leftHandMode === 'chords' && bassNotes.length >= 2) {
+              return generateChord(bassNotes);
+            } else {
+              // Melody mode or not enough notes for chord
+              const randomIndex = Math.floor(Math.random() * bassNotes.length);
+              return bassNotes[randomIndex];
+            }
+          }
+        } else if (chosenHand === 'right' && rightHandActive) {
+          // Generate for right hand (treble clef)
+          const trebleNotes = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+          if (trebleNotes.length > 0) {
+            if (rightHandMode === 'chords' && trebleNotes.length >= 2) {
+              return generateChord(trebleNotes);
+            } else {
+              // Melody mode or not enough notes for chord
+              const randomIndex = Math.floor(Math.random() * trebleNotes.length);
+              return trebleNotes[randomIndex];
+            }
           }
         }
       }
@@ -1997,11 +2042,11 @@ async function handleNoteInput(userNote) {
   if (!userNote) return;
   
   // For Piano Mode, use more specific note matching
-  await handleNoteInputWithOctave(userNote, null); // No octave info from keyboard
+  await handleNoteInputWithOctave(userNote, null, null); // No octave info from keyboard, no target clef
 }
 
 // Enhanced note input handler with octave support for Piano Mode
-async function handleNoteInputWithOctave(userNote, userOctave) {
+async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
   if (!gameRunning) return;
   
   // FIXED: Clean up stale chord progress immediately on every input to prevent registration failures
@@ -2016,8 +2061,14 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
   // For piano mode with hand independence, only consider notes from active hands' clefs
   movingNotes.forEach((note, index) => {
     if (note.note.toUpperCase() === userNote) {
+      // In hard mode with target clef specified, only consider notes from that specific clef
+      if (pianoModeActive && pianoModeSettings.hardMode && targetClef) {
+        if (note.clef !== targetClef) {
+          return; // Skip notes from other clefs in hard mode
+        }
+      }
       // In piano mode, check if this note belongs to an active hand
-      if (pianoModeActive && currentClef === 'grand') {
+      else if (pianoModeActive && currentClef === 'grand') {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
         

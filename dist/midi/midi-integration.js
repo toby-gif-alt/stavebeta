@@ -3,14 +3,15 @@
  * Connects the MIDI manager to the existing game input system
  */
 import { midiManager } from './midi-manager.js';
-import { getNaturalNoteForGame } from './midi-utils.js';
+import { getNaturalNoteForGame, getClefForMidiNote } from './midi-utils.js';
 // Piano Mode state
 let pianoModeSettings = {
     isActive: false,
     chordMode: false,
     forceGrandStaff: true,
     leftHand: 'none',
-    rightHand: 'none'
+    rightHand: 'none',
+    hardMode: false
 };
 /**
  * Reinitialize MIDI connections after game restart
@@ -23,16 +24,35 @@ export function reinitializeMidiAfterRestart() {
     midiManager.onNoteInput((noteMapping) => {
         // Get the appropriate note for the game based on Piano Mode settings
         const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
-        // Call the octave-aware game input handler for Piano Mode strict mode support
-        if (typeof window.handleNoteInputWithOctave === 'function') {
-            window.handleNoteInputWithOctave(noteForGame, noteMapping.octave);
+        // In hard mode, determine which clef this MIDI note should affect
+        let shouldProcessInput = true;
+        let targetClef = null;
+        if (pianoModeSettings.isActive && pianoModeSettings.hardMode) {
+            targetClef = getClefForMidiNote(noteMapping.midiNote);
+            // Only process input if the target clef is active
+            const leftHandActive = pianoModeSettings.leftHand !== 'none';
+            const rightHandActive = pianoModeSettings.rightHand !== 'none';
+            shouldProcessInput = (targetClef === 'bass' && leftHandActive) ||
+                (targetClef === 'treble' && rightHandActive);
         }
-        else if (typeof window.handleNoteInput === 'function') {
-            // Fallback to regular handler if octave-aware version not available
-            window.handleNoteInput(noteForGame);
+        if (shouldProcessInput) {
+            // Call the octave-aware game input handler for Piano Mode strict mode support
+            if (typeof window.handleNoteInputWithOctave === 'function') {
+                // Pass the target clef information for hard mode
+                if (pianoModeSettings.hardMode && targetClef) {
+                    window.handleNoteInputWithOctave(noteForGame, noteMapping.octave, targetClef);
+                }
+                else {
+                    window.handleNoteInputWithOctave(noteForGame, noteMapping.octave);
+                }
+            }
+            else if (typeof window.handleNoteInput === 'function') {
+                // Fallback to regular handler if octave-aware version not available
+                window.handleNoteInput(noteForGame);
+            }
+            // Visual feedback for MIDI input
+            highlightMidiInput(noteForGame);
         }
-        // Visual feedback for MIDI input
-        highlightMidiInput(noteForGame);
     });
     // Update UI to reflect current status
     updateMidiUI();
@@ -48,16 +68,35 @@ export function initializeMidiIntegration() {
     midiManager.onNoteInput((noteMapping) => {
         // Get the appropriate note for the game based on Piano Mode settings
         const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
-        // Call the octave-aware game input handler for Piano Mode strict mode support
-        if (typeof window.handleNoteInputWithOctave === 'function') {
-            window.handleNoteInputWithOctave(noteForGame, noteMapping.octave);
+        // In hard mode, determine which clef this MIDI note should affect
+        let shouldProcessInput = true;
+        let targetClef = null;
+        if (pianoModeSettings.isActive && pianoModeSettings.hardMode) {
+            targetClef = getClefForMidiNote(noteMapping.midiNote);
+            // Only process input if the target clef is active
+            const leftHandActive = pianoModeSettings.leftHand !== 'none';
+            const rightHandActive = pianoModeSettings.rightHand !== 'none';
+            shouldProcessInput = (targetClef === 'bass' && leftHandActive) ||
+                (targetClef === 'treble' && rightHandActive);
         }
-        else if (typeof window.handleNoteInput === 'function') {
-            // Fallback to regular handler if octave-aware version not available
-            window.handleNoteInput(noteForGame);
+        if (shouldProcessInput) {
+            // Call the octave-aware game input handler for Piano Mode strict mode support
+            if (typeof window.handleNoteInputWithOctave === 'function') {
+                // Pass the target clef information for hard mode
+                if (pianoModeSettings.hardMode && targetClef) {
+                    window.handleNoteInputWithOctave(noteForGame, noteMapping.octave, targetClef);
+                }
+                else {
+                    window.handleNoteInputWithOctave(noteForGame, noteMapping.octave);
+                }
+            }
+            else if (typeof window.handleNoteInput === 'function') {
+                // Fallback to regular handler if octave-aware version not available
+                window.handleNoteInput(noteForGame);
+            }
+            // Visual feedback for MIDI input
+            highlightMidiInput(noteForGame);
         }
-        // Visual feedback for MIDI input
-        highlightMidiInput(noteForGame);
     });
     // Set up device connection monitoring
     midiManager.on('deviceConnected', (device) => {
@@ -255,12 +294,21 @@ function updatePianoModeUI() {
     const leftHandSelect = document.getElementById('leftHandMode');
     const rightHandSelect = document.getElementById('rightHandMode');
     const grandStaffCheck = document.getElementById('pianoGrandStaffForce');
+    const hardModeCheck = document.getElementById('pianoHardMode');
+    const hardModeInfo = document.getElementById('hardModeInfo');
     if (leftHandSelect)
         leftHandSelect.value = pianoModeSettings.leftHand || 'none';
     if (rightHandSelect)
         rightHandSelect.value = pianoModeSettings.rightHand || 'none';
     if (grandStaffCheck)
         grandStaffCheck.checked = pianoModeSettings.forceGrandStaff;
+    if (hardModeCheck) {
+        hardModeCheck.checked = pianoModeSettings.hardMode || false;
+        // Show/hide hard mode info based on checkbox state
+        if (hardModeInfo) {
+            hardModeInfo.style.display = hardModeCheck.checked ? 'block' : 'none';
+        }
+    }
     // Notify the game of Piano Mode changes (but don't cause circular calls)
     if (typeof window.onPianoModeChanged === 'function') {
         window.onPianoModeChanged(pianoModeSettings);
@@ -300,6 +348,7 @@ function initializePianoModeUI() {
     const leftHandSelect = document.getElementById('leftHandMode');
     const rightHandSelect = document.getElementById('rightHandMode');
     const grandStaffCheck = document.getElementById('pianoGrandStaffForce');
+    const hardModeCheck = document.getElementById('pianoHardMode');
     if (leftHandSelect) {
         leftHandSelect.addEventListener('change', () => {
             updatePianoModeSettings({ leftHand: leftHandSelect.value });
@@ -313,6 +362,11 @@ function initializePianoModeUI() {
     if (grandStaffCheck) {
         grandStaffCheck.addEventListener('change', () => {
             updatePianoModeSettings({ forceGrandStaff: grandStaffCheck.checked });
+        });
+    }
+    if (hardModeCheck) {
+        hardModeCheck.addEventListener('change', () => {
+            updatePianoModeSettings({ hardMode: hardModeCheck.checked });
         });
     }
 }
