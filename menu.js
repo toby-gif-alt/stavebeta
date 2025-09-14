@@ -282,9 +282,11 @@ function updatePianoModeUI() {
       // Set enabled based on active status
       gameSettings.pianoMode.enabled = true;
       
-      // Force Grand Staff when Piano Mode is active
-      if (gameSettings.clef !== 'grand') {
-        gameSettings.clef = 'grand';
+      // Force appropriate clef when Piano Mode is active
+      // Use hardMode clef if hard mode is enabled, otherwise use grand staff
+      const targetClef = gameSettings.pianoMode.hardMode ? 'hardMode' : 'grand';
+      if (gameSettings.clef !== targetClef) {
+        gameSettings.clef = targetClef;
         updateClefButtons();
         saveSettings();
       }
@@ -398,7 +400,9 @@ function updateClefButtonsForPianoMode(pianoModeActive) {
 function updateClefButtons() {
   document.querySelectorAll('.clef-btn').forEach(btn => {
     btn.classList.remove('active');
-    if (btn.dataset.clef === gameSettings.clef) {
+    // For UI purposes, hardMode should display as grand staff being active
+    const displayClef = gameSettings.clef === 'hardMode' ? 'grand' : gameSettings.clef;
+    if (btn.dataset.clef === displayClef) {
       btn.classList.add('active');
     }
   });
@@ -471,6 +475,16 @@ document.addEventListener('DOMContentLoaded', function() {
   
   document.getElementById('hardModeToggle').addEventListener('change', function() {
     gameSettings.pianoMode.hardMode = this.checked;
+    
+    // Update clef selection based on hard mode setting if Piano Mode is active
+    if (gameSettings.pianoMode.active) {
+      const targetClef = this.checked ? 'hardMode' : 'grand';
+      if (gameSettings.clef !== targetClef) {
+        gameSettings.clef = targetClef;
+        updateClefButtons();
+      }
+    }
+    
     saveSettings();
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
