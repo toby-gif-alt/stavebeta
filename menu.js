@@ -468,15 +468,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     updatePianoModeUI();
     saveSettings();
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
+    }
   });
   
   // Piano Mode option handlers
   document.getElementById('strictModeToggle').addEventListener('change', function() {
     gameSettings.pianoMode.strictMode = this.checked;
     saveSettings();
+    
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
       window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
     }
   });
   
@@ -493,9 +504,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     saveSettings();
+    
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
       window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
     }
   });
   
@@ -505,9 +522,15 @@ document.addEventListener('DOMContentLoaded', function() {
     gameSettings.pianoMode.leftHand = this.value;
     updateDropdownLabelColor(this);
     saveSettings();
+    
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
       window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
     }
   });
   
@@ -515,9 +538,15 @@ document.addEventListener('DOMContentLoaded', function() {
     gameSettings.pianoMode.rightHand = this.value;
     updateDropdownLabelColor(this);
     saveSettings();
+    
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
       window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
     }
   });
   
