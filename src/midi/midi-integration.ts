@@ -338,31 +338,10 @@ export function destroyMidiIntegration(): void {
  * Update Piano Mode UI elements
  */
 function updatePianoModeUI(): void {
-  const pianoControls = document.getElementById('pianoModeControls');
-  if (pianoControls) {
-    // Show piano mode controls when active
-    pianoControls.style.display = pianoModeSettings.isActive ? 'block' : 'none';
-  }
+  // Piano Mode controls have been removed from the game - settings are now handled in main menu
+  // This function now just calls the game-side handler to update the clef mode
   
-  // Update dropdowns and checkboxes to match current settings
-  const leftHandSelect = document.getElementById('leftHandMode') as HTMLSelectElement;
-  const rightHandSelect = document.getElementById('rightHandMode') as HTMLSelectElement;
-  const grandStaffCheck = document.getElementById('pianoGrandStaffForce') as HTMLInputElement;
-  const hardModeCheck = document.getElementById('pianoHardMode') as HTMLInputElement;
-  const hardModeInfo = document.getElementById('hardModeInfo') as HTMLElement;
-  
-  if (leftHandSelect) leftHandSelect.value = pianoModeSettings.leftHand || 'none';
-  if (rightHandSelect) rightHandSelect.value = pianoModeSettings.rightHand || 'none';
-  if (grandStaffCheck) grandStaffCheck.checked = pianoModeSettings.forceGrandStaff;
-  if (hardModeCheck) {
-    hardModeCheck.checked = pianoModeSettings.hardMode || false;
-    // Show/hide hard mode info based on checkbox state
-    if (hardModeInfo) {
-      hardModeInfo.style.display = hardModeCheck.checked ? 'block' : 'none';
-    }
-  }
-  
-  // Notify the game of Piano Mode changes (but don't cause circular calls)
+  // Call the game-side Piano Mode change handler if available
   if (typeof (window as any).onPianoModeChanged === 'function') {
     (window as any).onPianoModeChanged(pianoModeSettings);
   }
@@ -401,35 +380,9 @@ function initializePianoModeUI(): void {
     }
   }
   
-  // Set up event listeners for Piano Mode controls
-  const leftHandSelect = document.getElementById('leftHandMode') as HTMLSelectElement;
-  const rightHandSelect = document.getElementById('rightHandMode') as HTMLSelectElement;
-  const grandStaffCheck = document.getElementById('pianoGrandStaffForce') as HTMLInputElement;
-  const hardModeCheck = document.getElementById('pianoHardMode') as HTMLInputElement;
-  
-  if (leftHandSelect) {
-    leftHandSelect.addEventListener('change', () => {
-      updatePianoModeSettings({ leftHand: leftHandSelect.value as 'none' | 'melody' | 'chords' });
-    });
-  }
-  
-  if (rightHandSelect) {
-    rightHandSelect.addEventListener('change', () => {
-      updatePianoModeSettings({ rightHand: rightHandSelect.value as 'none' | 'melody' | 'chords' });
-    });
-  }
-  
-  if (grandStaffCheck) {
-    grandStaffCheck.addEventListener('change', () => {
-      updatePianoModeSettings({ forceGrandStaff: grandStaffCheck.checked });
-    });
-  }
-  
-  if (hardModeCheck) {
-    hardModeCheck.addEventListener('change', () => {
-      updatePianoModeSettings({ hardMode: hardModeCheck.checked });
-    });
-  }
+  // Piano Mode controls have been removed from the game - settings are now handled in main menu
+  // Just update the UI state without trying to attach event listeners
+  updatePianoModeUI();
 }
 
 // Auto-initialize when script loads

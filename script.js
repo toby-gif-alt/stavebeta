@@ -2071,7 +2071,7 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
         }
       }
       // In piano mode, check if this note belongs to an active hand
-      else if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+      else if (pianoModeActive && isDualClefMode()) {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
         
@@ -2199,7 +2199,7 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
         correctAnswers++;
         
         // Piano Mode: Track separate hand scores
-        if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+        if (pianoModeActive && isDualClefMode()) {
           if (matchedNote.clef === 'bass') {
             leftHandScore++;
           } else if (matchedNote.clef === 'treble') {
@@ -2298,7 +2298,7 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
       correctAnswers++;
       
       // Piano Mode: Track separate hand scores
-      if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+      if (pianoModeActive && isDualClefMode()) {
         if (matchedNote.clef === 'bass') {
           leftHandScore++;
         } else if (matchedNote.clef === 'treble') {
@@ -2369,7 +2369,7 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
     // Check for level progression
     let canAdvanceLevel = false;
     
-    if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+    if (pianoModeActive && isDualClefMode()) {
       // Piano Mode: level up when all active hands reach level 10
       const leftHandActive = pianoModeSettings.leftHand !== 'none';
       const rightHandActive = pianoModeSettings.rightHand !== 'none';
@@ -2508,7 +2508,7 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
     // Find the leftmost note respecting hand boundaries in piano mode
     movingNotes.forEach((note, index) => {
       // In piano mode, check if this note belongs to an active hand
-      if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+      if (pianoModeActive && isDualClefMode()) {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
         
@@ -2633,7 +2633,7 @@ function updateDisplays() {
   notesDestroyedDisplay.textContent = `Notes Destroyed: ${notesDestroyed}`;
   
   // Update hand scores if Piano Mode is active
-  if (pianoModeActive pianoModeActive && isDualClefMode()pianoModeActive && isDualClefMode() isDualClefMode()) {
+  if (pianoModeActive && isDualClefMode()) {
     leftHandDisplay.textContent = `Left Hand: ${leftHandScore}`;
     rightHandDisplay.textContent = `Right Hand: ${rightHandScore}`;
   }
