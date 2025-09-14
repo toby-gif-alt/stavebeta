@@ -32,6 +32,8 @@ export interface PianoModeSettings {
   leftHand?: 'none' | 'melody' | 'chords';   // Left hand mode (bass clef)
   rightHand?: 'none' | 'melody' | 'chords';  // Right hand mode (treble clef)
   hardMode?: boolean;      // Enable MIDI input splitting (bass ≤B3, treble ≥C4)
+  keySignature?: string;   // Current key signature (default: C major)
+  changeKeys?: boolean;    // Enable automatic key changes between levels
 }
 
 export interface MidiConnectionStatus {

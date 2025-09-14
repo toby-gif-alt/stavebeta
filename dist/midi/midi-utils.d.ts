@@ -72,3 +72,36 @@ export declare function getClefForMidiNote(midiNote: number): 'bass' | 'treble';
  * @returns True if the note belongs to the target clef in hard mode
  */
 export declare function isNoteInClefRange(midiNote: number, targetClef: 'bass' | 'treble'): boolean;
+/**
+ * Key signature data with sharp/flat requirements
+ */
+export interface KeySignatureInfo {
+    name: string;
+    sharps: string[];
+    flats: string[];
+    accidentalCount: number;
+}
+/**
+ * All available key signatures with their accidentals
+ */
+export declare const KEY_SIGNATURES: Record<string, KeySignatureInfo>;
+/**
+ * Get information about a key signature
+ * @param keySignature Key signature code (C, G, D, etc.)
+ * @returns Key signature information
+ */
+export declare function getKeySignatureInfo(keySignature: string): KeySignatureInfo;
+/**
+ * Check if a MIDI note requires an accidental in the given key signature
+ * Returns true if the note letter in this key signature should be played as a black key
+ * @param midiNote MIDI note number
+ * @param keySignature Key signature code
+ * @returns True if this note letter should be played as black key in this key signature
+ */
+export declare function requiresAccidental(midiNote: number, keySignature: string): boolean;
+/**
+ * Get the next key signature based on change probability rules
+ * @param currentKey Current key signature
+ * @returns New key signature
+ */
+export declare function getNextKeySignature(currentKey: string): string;
