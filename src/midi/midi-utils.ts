@@ -174,3 +174,158 @@ export function isNoteInClefRange(midiNote: number, targetClef: 'bass' | 'treble
   const noteClef = getClefForMidiNote(midiNote);
   return noteClef === targetClef;
 }
+
+/**
+ * Key signature data with sharp/flat requirements
+ */
+export interface KeySignatureInfo {
+  name: string;
+  sharps: string[];
+  flats: string[];
+  accidentalCount: number;
+}
+
+/**
+ * All available key signatures with their accidentals
+ */
+export const KEY_SIGNATURES: Record<string, KeySignatureInfo> = {
+  'C': { name: 'C Major', sharps: [], flats: [], accidentalCount: 0 },
+  'G': { name: 'G Major', sharps: ['F'], flats: [], accidentalCount: 1 },
+  'D': { name: 'D Major', sharps: ['F', 'C'], flats: [], accidentalCount: 2 },
+  'A': { name: 'A Major', sharps: ['F', 'C', 'G'], flats: [], accidentalCount: 3 },
+  'E': { name: 'E Major', sharps: ['F', 'C', 'G', 'D'], flats: [], accidentalCount: 4 },
+  'B': { name: 'B Major', sharps: ['F', 'C', 'G', 'D', 'A'], flats: [], accidentalCount: 5 },
+  'F#': { name: 'F♯ Major', sharps: ['F', 'C', 'G', 'D', 'A', 'E'], flats: [], accidentalCount: 6 },
+  'Gb': { name: 'G♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D', 'G', 'C'], accidentalCount: 6 },
+  'Db': { name: 'D♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D', 'G'], accidentalCount: 5 },
+  'Ab': { name: 'A♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D'], accidentalCount: 4 },
+  'Eb': { name: 'E♭ Major', sharps: [], flats: ['B', 'E', 'A'], accidentalCount: 3 },
+  'Bb': { name: 'B♭ Major', sharps: [], flats: ['B', 'E'], accidentalCount: 2 },
+  'F': { name: 'F Major', sharps: [], flats: ['B'], accidentalCount: 1 }
+};
+
+/**
+ * Get information about a key signature
+ * @param keySignature Key signature code (C, G, D, etc.)
+ * @returns Key signature information
+ */
+export function getKeySignatureInfo(keySignature: string): KeySignatureInfo {
+  return KEY_SIGNATURES[keySignature] || KEY_SIGNATURES['C'];
+}
+
+/**
+ * Check if a MIDI note requires an accidental in the given key signature
+ * @param midiNote MIDI note number
+ * @param keySignature Key signature code
+ * @returns True if the note requires playing the black key
+ */
+export function requiresAccidental(midiNote: number, keySignature: string): boolean {
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const noteIndex = midiNote % 12;
+  const noteName = noteNames[noteIndex];
+  const naturalNote = noteName.charAt(0);
+  
+  const keyInfo = getKeySignatureInfo(keySignature);
+  
+  // If the note is naturally sharp/flat, check if it's in the key signature
+  if (noteName.includes('#')) {
+    return keyInfo.sharps.includes(naturalNote);
+  }
+  
+  // For natural notes, check if they should be flat in this key
+  const flatEquivalent = getNaturalForFlat(naturalNote);
+  if (flatEquivalent && keyInfo.flats.includes(flatEquivalent)) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get the natural note that corresponds to a flat
+ */
+function getNaturalForFlat(note: string): string | null {
+  const flatMap: Record<string, string> = {
+    'B': 'B', // Bb
+    'E': 'E', // Eb  
+    'A': 'A', // Ab
+    'D': 'D', // Db
+    'G': 'G', // Gb
+    'C': 'C'  // Cb
+  };
+  return flatMap[note] || null;
+}
+
+/**
+ * Get the next key signature based on change probability rules
+ * @param currentKey Current key signature
+ * @returns New key signature
+ */
+export function getNextKeySignature(currentKey: string): string {
+  const random = Math.random();
+  
+  if (random < 0.8) {
+    // 80% chance: closely related key (±1 accidental)
+    return getCloselyRelatedKey(currentKey);
+  } else if (random < 0.95) {
+    // 15% chance: two accidentals away
+    return getTwoAccidentalsAwayKey(currentKey);
+  } else {
+    // 5% chance: random distant key
+    return getRandomDistantKey(currentKey);
+  }
+}
+
+/**
+ * Get a closely related key (±1 accidental)
+ */
+function getCloselyRelatedKey(currentKey: string): string {
+  const currentInfo = getKeySignatureInfo(currentKey);
+  const currentCount = currentInfo.accidentalCount;
+  
+  const possibleKeys: string[] = [];
+  
+  // Find keys with ±1 accidental
+  Object.entries(KEY_SIGNATURES).forEach(([key, info]) => {
+    if (Math.abs(info.accidentalCount - currentCount) === 1) {
+      possibleKeys.push(key);
+    }
+  });
+  
+  if (possibleKeys.length === 0) {
+    return currentKey; // Fallback to current if no matches
+  }
+  
+  return possibleKeys[Math.floor(Math.random() * possibleKeys.length)];
+}
+
+/**
+ * Get a key two accidentals away
+ */
+function getTwoAccidentalsAwayKey(currentKey: string): string {
+  const currentInfo = getKeySignatureInfo(currentKey);
+  const currentCount = currentInfo.accidentalCount;
+  
+  const possibleKeys: string[] = [];
+  
+  // Find keys with ±2 accidentals
+  Object.entries(KEY_SIGNATURES).forEach(([key, info]) => {
+    if (Math.abs(info.accidentalCount - currentCount) === 2) {
+      possibleKeys.push(key);
+    }
+  });
+  
+  if (possibleKeys.length === 0) {
+    return getCloselyRelatedKey(currentKey); // Fallback to closely related
+  }
+  
+  return possibleKeys[Math.floor(Math.random() * possibleKeys.length)];
+}
+
+/**
+ * Get a random distant key
+ */
+function getRandomDistantKey(currentKey: string): string {
+  const allKeys = Object.keys(KEY_SIGNATURES).filter(key => key !== currentKey);
+  return allKeys[Math.floor(Math.random() * allKeys.length)];
+}

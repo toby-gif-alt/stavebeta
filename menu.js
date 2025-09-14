@@ -10,7 +10,9 @@ let gameSettings = {
     strictMode: false,
     leftHand: 'none',
     rightHand: 'none',
-    hardMode: false
+    hardMode: false,
+    keySignature: 'C',  // Default to C major
+    changeKeys: false   // Default to no automatic key changes
   }
 };
 
@@ -85,7 +87,9 @@ function loadSettings() {
         strictMode: false,
         leftHand: 'none',
         rightHand: 'none',
-        hardMode: false
+        hardMode: false,
+        keySignature: 'C',
+        changeKeys: false
       };
     } else {
       // Fill in any missing properties
@@ -96,6 +100,8 @@ function loadSettings() {
         leftHand: 'none',
         rightHand: 'none',
         hardMode: false,
+        keySignature: 'C',
+        changeKeys: false,
         ...gameSettings.pianoMode
       };
     }
@@ -359,6 +365,19 @@ function updatePianoModeControls() {
     rightHandSelect.disabled = !gameSettings.pianoMode.active;
     updateDropdownLabelColor(rightHandSelect);
   }
+  
+  const keySignatureSelect = document.getElementById('keySignatureSelect');
+  if (keySignatureSelect) {
+    keySignatureSelect.value = gameSettings.pianoMode.keySignature || 'C';
+    keySignatureSelect.disabled = !gameSettings.pianoMode.active;
+    updateDropdownLabelColor(keySignatureSelect);
+  }
+  
+  const changeKeysToggle = document.getElementById('changeKeysToggle');
+  if (changeKeysToggle) {
+    changeKeysToggle.checked = gameSettings.pianoMode.changeKeys || false;
+    changeKeysToggle.disabled = !gameSettings.pianoMode.active;
+  }
 }
 
 // Update dropdown label color based on selection
@@ -537,6 +556,39 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('rightHandSelect').addEventListener('change', function() {
     gameSettings.pianoMode.rightHand = this.value;
     updateDropdownLabelColor(this);
+    saveSettings();
+    
+    // Notify the game if it's running
+    if (typeof window.updateGamePianoModeSettings === 'function') {
+      window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
+    }
+  });
+  
+  // Key Signature selector
+  document.getElementById('keySignatureSelect').addEventListener('change', function() {
+    gameSettings.pianoMode.keySignature = this.value;
+    updateDropdownLabelColor(this);
+    saveSettings();
+    
+    // Notify the game if it's running
+    if (typeof window.updateGamePianoModeSettings === 'function') {
+      window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+    
+    // Notify MIDI integration about the change
+    if (typeof window.updateMidiPianoModeSettings === 'function') {
+      window.updateMidiPianoModeSettings(gameSettings.pianoMode);
+    }
+  });
+  
+  // Change Keys toggle
+  document.getElementById('changeKeysToggle').addEventListener('change', function() {
+    gameSettings.pianoMode.changeKeys = this.checked;
     saveSettings();
     
     // Notify the game if it's running
