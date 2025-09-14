@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIDI Key Signature Fix Validation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>MIDI Key Signature Fix Validation</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        // Test to verify the key signature validation fix works correctly
+        import { requiresAccidental, getKeySignatureInfo } from './dist/midi/midi-utils.js';
+
+        function isBlackKeyPressed(midiNote) {
+            const noteIndex = midiNote % 12;
+            return [1, 3, 6, 8, 10].includes(noteIndex);
+        }
+
+        function simulateOriginalNoteMapping(originalMidi) {
+            // Simulate what the fixed MIDI manager now does
+            const getClosestNaturalNote = (midiNote) => {
+                if ([0, 2, 4, 5, 7, 9, 11].includes(midiNote % 12)) {
+                    return midiNote; // Already natural
+                }
+                
+                const noteInOctave = midiNote % 12;
+                const octave = Math.floor(midiNote / 12);
+                
+                let naturalNoteInOctave;
+                switch (noteInOctave) {
+                    case 1: naturalNoteInOctave = 0; break;  // C# -> C
+                    case 3: naturalNoteInOctave = 2; break;  // D# -> D
+                    case 6: naturalNoteInOctave = 5; break;  // F# -> F
+                    case 8: naturalNoteInOctave = 7; break;  // G# -> G
+                    case 10: naturalNoteInOctave = 9; break; // A# -> A
+                    default: naturalNoteInOctave = noteInOctave;
+                }
+                
+                return octave * 12 + naturalNoteInOctave;
+            };
+
+            const naturalMidi = getClosestNaturalNote(originalMidi);
+            
+            return {
+                midiNote: naturalMidi,           // For game logic (natural note)
+                originalMidiNote: originalMidi,  // For key signature validation (original note)
+                // ... other fields would be here in real implementation
+            };
+        }
+
+        function testKeySignatureValidation(originalMidi, keySignature, testName, expectedResult) {
+            const noteMapping = simulateOriginalNoteMapping(originalMidi);
+            
+            // Simulate the fixed key signature validation logic
+            const originalMidiNote = noteMapping.originalMidiNote ?? noteMapping.midiNote;
+            const requiresBlackKey = requiresAccidental(originalMidiNote, keySignature);
+            const isBlackKey = isBlackKeyPressed(originalMidiNote);
+            const wouldBeRejected = requiresBlackKey !== isBlackKey;
+            const actualResult = wouldBeRejected ? 'REJECTED' : 'ACCEPTED';
+            
+            const passed = actualResult === expectedResult;
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.innerHTML = `
+                <h3>${testName}</h3>
+                <p><strong>Original MIDI:</strong> ${originalMidi} (${isBlackKeyPressed(originalMidi) ? 'BLACK' : 'white'} key)</p>
+                <p><strong>Converted MIDI:</strong> ${noteMapping.midiNote} (${isBlackKeyPressed(noteMapping.midiNote) ? 'BLACK' : 'white'} key)</p>
+                <p><strong>Key Signature:</strong> ${keySignature}</p>
+                <p><strong>Expected:</strong> ${expectedResult}</p>
+                <p><strong>Actual:</strong> ${actualResult}</p>
+                <p><strong>Result:</strong> ${passed ? '✅ PASS' : '❌ FAIL'}</p>
+            `;
+            
+            return { passed, resultDiv };
+        }
+
+        // Run the tests
+        const tests = [
+            // The main issue from the bug report: F# should be accepted in G major
+            { midi: 66, key: 'G', name: 'F# in G Major (main bug fix)', expected: 'ACCEPTED' },
+            
+            // F natural should still be rejected in G major
+            { midi: 65, key: 'G', name: 'F natural in G Major (should be rejected)', expected: 'REJECTED' },
+            
+            // Other notes in G major should work correctly
+            { midi: 60, key: 'G', name: 'C natural in G Major', expected: 'ACCEPTED' },
+            { midi: 62, key: 'G', name: 'D natural in G Major', expected: 'ACCEPTED' },
+            { midi: 67, key: 'G', name: 'G natural in G Major', expected: 'ACCEPTED' },
+            
+            // Test other octaves to make sure fix works universally
+            { midi: 54, key: 'G', name: 'F#3 in G Major', expected: 'ACCEPTED' },
+            { midi: 78, key: 'G', name: 'F#5 in G Major', expected: 'ACCEPTED' },
+        ];
+
+        const resultsDiv = document.getElementById('results');
+        let passCount = 0;
+        let totalCount = tests.length;
+
+        tests.forEach(test => {
+            const result = testKeySignatureValidation(test.midi, test.key, test.name, test.expected);
+            resultsDiv.appendChild(result.resultDiv);
+            if (result.passed) passCount++;
+        });
+
+        // Summary
+        const summaryDiv = document.createElement('div');
+        summaryDiv.className = `test-result ${passCount === totalCount ? 'pass' : 'fail'}`;
+        summaryDiv.innerHTML = `
+            <h2>Test Summary</h2>
+            <p><strong>Passed:</strong> ${passCount} / ${totalCount}</p>
+            <p><strong>Overall Result:</strong> ${passCount === totalCount ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}</p>
+        `;
+        resultsDiv.insertBefore(summaryDiv, resultsDiv.firstChild);
+    </script>
+</body>
+</html>
