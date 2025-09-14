@@ -2473,61 +2473,88 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
       }
     });
     
-    // If we found a chord to destroy, destroy it
+    // If we found a chord to destroy, trigger flashing then destroy it
     if (leftmostChordToDestroy && leftmostChordToDestroy.isChord) {
       const chordId = leftmostChordToDestroy.chordId;
       const affectedClef = leftmostChordToDestroy.clef;
       
-      // Remove all notes in this chord
-      for (let i = movingNotes.length - 1; i >= 0; i--) {
-        if (movingNotes[i].isChord && movingNotes[i].chordId === chordId) {
-          movingNotes.splice(i, 1);
+      // Trigger flashing animation for all notes in the chord
+      movingNotes.forEach(note => {
+        if (note.isChord && note.chordId === chordId) {
+          note.flashing = true;
+          note.flashStartTime = Date.now();
         }
-      }
+      });
       
-      // Reset chord progress for this chord
-      chordProgress.delete(chordId);
-      
-      // Spawn next note immediately for single-note flow
-      forceSpawnNote();
-      
-      feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
-      feedback.style.color = '#d0021b';
-      feedback.style.fontSize = '16px';
-    } else if (leftmostNote) {
-      // Fall back to original logic for single notes
-      if (leftmostNote.isChord) {
-        // For chords: instantly delete the entire chord for the affected hand/clef and reset progress
-        const chordId = leftmostNote.chordId;
-        const affectedClef = leftmostNote.clef;
-        
-        // Remove all notes in this chord
+      // Remove all notes in this chord after a brief delay to allow flashing
+      setTimeout(() => {
         for (let i = movingNotes.length - 1; i >= 0; i--) {
           if (movingNotes[i].isChord && movingNotes[i].chordId === chordId) {
             movingNotes.splice(i, 1);
           }
         }
         
+        // Spawn next note after destruction
+        forceSpawnNote();
+      }, 600); // 600ms matches the 4 flash cycles (4 * 150ms = 600ms)
+      
+      // Reset chord progress for this chord
+      chordProgress.delete(chordId);
+      
+      feedback.textContent = `Wrong note! Chord will be destroyed for ${affectedClef} clef.`;
+      feedback.style.color = '#d0021b';
+      feedback.style.fontSize = '16px';
+    } else if (leftmostNote) {
+      // Fall back to original logic for single notes
+      if (leftmostNote.isChord) {
+        // For chords: trigger flashing then delete the entire chord for the affected hand/clef
+        const chordId = leftmostNote.chordId;
+        const affectedClef = leftmostNote.clef;
+        
+        // Trigger flashing animation for all notes in the chord
+        movingNotes.forEach(note => {
+          if (note.isChord && note.chordId === chordId) {
+            note.flashing = true;
+            note.flashStartTime = Date.now();
+          }
+        });
+        
+        // Remove all notes in this chord after a brief delay to allow flashing
+        setTimeout(() => {
+          for (let i = movingNotes.length - 1; i >= 0; i--) {
+            if (movingNotes[i].isChord && movingNotes[i].chordId === chordId) {
+              movingNotes.splice(i, 1);
+            }
+          }
+          
+          // Spawn next note after destruction
+          forceSpawnNote();
+        }, 600); // 600ms matches the 4 flash cycles (4 * 150ms = 600ms)
+        
         // Reset chord progress for this chord
         chordProgress.delete(chordId);
         
-        // Spawn next note immediately for single-note flow
-        forceSpawnNote();
-        
-        feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
+        feedback.textContent = `Wrong note! Chord will be destroyed for ${affectedClef} clef.`;
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       } else {
-        // Single note - destroy immediately and spawn new one (same behavior as chords)
-        const noteIndex = movingNotes.indexOf(leftmostNote);
-        if (noteIndex !== -1) {
-          movingNotes.splice(noteIndex, 1);
-          
-          // Spawn next note immediately for single-note flow
-          forceSpawnNote();
-        }
+        // Single note - trigger flashing then destroy
+        leftmostNote.flashing = true;
+        leftmostNote.flashStartTime = Date.now();
         
-        feedback.textContent = `Wrong note! Note deleted.`;
+        // Remove the note after a brief delay to allow flashing
+        const noteIndex = movingNotes.indexOf(leftmostNote);
+        setTimeout(() => {
+          const currentIndex = movingNotes.indexOf(leftmostNote);
+          if (currentIndex !== -1) {
+            movingNotes.splice(currentIndex, 1);
+          }
+          
+          // Spawn next note after destruction
+          forceSpawnNote();
+        }, 600); // 600ms matches the 4 flash cycles (4 * 150ms = 600ms)
+        
+        feedback.textContent = `Wrong note! Note will be destroyed. The note was ${leftmostNote.note}`;
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       }
@@ -2571,7 +2598,7 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
     playSound('explosionLoseLive');
     updateLifeDisplay();
     
-    // Don't immediately spawn a new note - let the current one finish flashing
+    // Note will flash briefly and then be destroyed automatically via setTimeout above
     
     if (lives <= 0) {
       gameOver();
