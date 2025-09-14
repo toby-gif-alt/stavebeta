@@ -288,6 +288,9 @@ let chordWrongNoteWindow = {
   hasCountedError: false // Track if we already counted an error in this window
 };
 
+// Track previous note type for chord-to-melody transition handling
+let previousNoteType = 'melody'; // 'chord' or 'melody' - tracks the type of the note that was just completed/destroyed
+
 // Clean up stale chord progress entries to prevent input registration failures
 // FIXED: Now called immediately on every input event instead of being throttled
 function cleanupStaleChordProgress() {
@@ -1401,6 +1404,21 @@ function forceSpawnNoteWithDelay(delayMs = 0) {
   }
 }
 
+// Smart spawn function that considers previous note type for proper transition delays
+function forceSpawnNoteWithTransitionDelay(currentNoteWasChord) {
+  // If the previous note was a chord, apply delay regardless of current note type
+  // This ensures smooth transitions and gives users time to adjust from chord to melody mode
+  if (previousNoteType === 'chord') {
+    forceSpawnNoteWithDelay(150);
+  } else {
+    // Previous note was melody, spawn immediately for normal flow
+    forceSpawnNote();
+  }
+  
+  // Update the previous note type tracker
+  previousNoteType = currentNoteWasChord ? 'chord' : 'melody';
+}
+
 // Spawn a replacement note when one is destroyed (wrong answer or collision)
 function respawnNote() {
   // Check if there's enough space to spawn a new note without overlap
@@ -1517,8 +1535,8 @@ function updateMovingNotes() {
       feedback.style.color = '#d0021b';
       feedback.style.fontSize = '16px';
       
-      // Spawn next note immediately for single-note flow
-      forceSpawnNote();
+      // Spawn next note with transition delay awareness
+      forceSpawnNoteWithTransitionDelay(note.isChord); // Track if the missed note was a chord
       
       if (lives <= 0) {
         gameOver();
@@ -1651,6 +1669,11 @@ async function restartGame() {
   
   // Clear Piano Mode chord progress tracking to prevent input blocking
   chordProgress.clear();
+  
+  // Reset chord-to-melody transition tracking
+  previousNoteType = 'melody';
+  chordWrongNoteWindow.hasCountedError = false;
+  chordWrongNoteWindow.lastWrongNoteTime = 0;
   
   movingNotes = [];
   explosions = [];
@@ -2186,8 +2209,8 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         // Clean up chord progress tracking
         chordProgress.delete(chordId);
         
-        // Spawn next note with 150ms delay for chord mode to give user time
-        forceSpawnNoteWithDelay(150);
+        // Spawn next note with transition delay awareness
+        forceSpawnNoteWithTransitionDelay(true); // Current note was a chord
         
         feedback.textContent = `Chord Complete! +1 point!`;
         feedback.style.color = '#00ff00';
@@ -2277,8 +2300,8 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
       // Remove the single note
       movingNotes.splice(matchedIndex, 1);
       
-      // Spawn next note immediately for single-note flow
-      forceSpawnNote();
+      // Spawn next note with transition delay awareness
+      forceSpawnNoteWithTransitionDelay(false); // Current note was not a chord
       
       feedback.textContent = `Correct! The note was ${matchedNote.note}`;
       feedback.style.color = '#00ff00';
@@ -2402,6 +2425,26 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
       if (shouldCountError) {
         chordWrongNoteWindow.hasCountedError = true;
       }
+    } else {
+      // Current note is melody - check if previous note was chord for extended forgiveness
+      if (previousNoteType === 'chord') {
+        // Apply chord forgiveness window to melody notes that follow chords
+        if (currentTime - chordWrongNoteWindow.lastWrongNoteTime < chordWrongNoteWindow.windowDuration) {
+          // Within window - don't count as additional error if we already counted one
+          if (chordWrongNoteWindow.hasCountedError) {
+            shouldCountError = false;
+          }
+        } else {
+          // Outside window or first error - reset tracking
+          chordWrongNoteWindow.hasCountedError = false;
+        }
+        
+        // Update tracking for melody notes following chords
+        chordWrongNoteWindow.lastWrongNoteTime = currentTime;
+        if (shouldCountError) {
+          chordWrongNoteWindow.hasCountedError = true;
+        }
+      }
     }
     
     // Find the leftmost note to destroy (regardless of whether it matches user input)
@@ -2469,11 +2512,11 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         feedback.style.fontSize = '16px';
       }
       
-      // Spawn next note with delay for chord mode, immediately for single notes
+      // Spawn next note with transition delay awareness
       if (isChordError) {
-        forceSpawnNoteWithDelay(150);
+        forceSpawnNoteWithTransitionDelay(true); // Current note was a chord
       } else {
-        forceSpawnNote();
+        forceSpawnNoteWithTransitionDelay(false); // Current note was melody
       }
     }
     
