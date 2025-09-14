@@ -19,6 +19,8 @@ let pianoModeSettings = {
  */
 export function reinitializeMidiAfterRestart() {
     console.log('Reinitializing MIDI after game restart...');
+    // Re-load Piano Mode settings in case they changed
+    initializePianoModeUI();
     // Re-register the note input callback since the game might have reset handlers
     midiManager.clearNoteInputCallbacks();
     // Use the existing note processing function to avoid duplication
@@ -279,9 +281,33 @@ export function getPianoModeSettings() {
  */
 export function updatePianoModeSettings(settings) {
     console.log('Updating MIDI Piano Mode settings:', settings);
-    pianoModeSettings = { ...pianoModeSettings, ...settings };
+    // Handle both MIDI settings format and menu settings format
+    const updatedSettings = {};
+    // Map menu format to MIDI format if needed
+    if ('active' in settings) {
+        updatedSettings.isActive = settings.active;
+    }
+    if ('isActive' in settings) {
+        updatedSettings.isActive = settings.isActive;
+    }
+    if ('leftHand' in settings) {
+        updatedSettings.leftHand = settings.leftHand;
+    }
+    if ('rightHand' in settings) {
+        updatedSettings.rightHand = settings.rightHand;
+    }
+    if ('hardMode' in settings) {
+        updatedSettings.hardMode = settings.hardMode;
+    }
+    if ('chordMode' in settings) {
+        updatedSettings.chordMode = settings.chordMode;
+    }
+    if ('forceGrandStaff' in settings) {
+        updatedSettings.forceGrandStaff = settings.forceGrandStaff;
+    }
+    pianoModeSettings = { ...pianoModeSettings, ...updatedSettings };
     updatePianoModeUI();
-    // Save to localStorage
+    // Save to localStorage (both formats for compatibility)
     localStorage.setItem('pianoModeSettings', JSON.stringify(pianoModeSettings));
     // Log the updated settings for debugging
     console.log('Updated MIDI Piano Mode settings:', pianoModeSettings);
@@ -290,15 +316,39 @@ export function updatePianoModeSettings(settings) {
  * Initialize Piano Mode UI event listeners
  */
 function initializePianoModeUI() {
-    // Load saved Piano Mode settings
-    const saved = localStorage.getItem('pianoModeSettings');
+    // Load saved Piano Mode settings from menu
+    const saved = localStorage.getItem('noteGameSettings');
     if (saved) {
         try {
-            const settings = JSON.parse(saved);
-            pianoModeSettings = { ...pianoModeSettings, ...settings };
+            const gameSettings = JSON.parse(saved);
+            if (gameSettings.pianoMode) {
+                // Map menu settings to MIDI integration settings
+                const menuSettings = gameSettings.pianoMode;
+                pianoModeSettings = {
+                    isActive: menuSettings.active || false,
+                    chordMode: false, // Keep existing default
+                    forceGrandStaff: true, // Keep existing default
+                    leftHand: menuSettings.leftHand || 'none',
+                    rightHand: menuSettings.rightHand || 'none',
+                    hardMode: menuSettings.hardMode || false
+                };
+                console.log('Loaded Piano Mode settings from menu:', pianoModeSettings);
+            }
         }
         catch (e) {
-            console.warn('Could not load Piano Mode settings:', e);
+            console.warn('Could not load Piano Mode settings from menu:', e);
+        }
+    }
+    // Also try loading from the dedicated pianoModeSettings key for backwards compatibility
+    const dedicatedSaved = localStorage.getItem('pianoModeSettings');
+    if (dedicatedSaved) {
+        try {
+            const settings = JSON.parse(dedicatedSaved);
+            pianoModeSettings = { ...pianoModeSettings, ...settings };
+            console.log('Updated Piano Mode settings with dedicated storage:', pianoModeSettings);
+        }
+        catch (e) {
+            console.warn('Could not load dedicated Piano Mode settings:', e);
         }
     }
     // Piano Mode controls have been removed from the game - settings are now handled in main menu
@@ -308,14 +358,18 @@ function initializePianoModeUI() {
 // Auto-initialize when script loads
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        initializeMidiIntegration();
+        // Load Piano Mode settings first
         initializePianoModeUI();
+        // Then initialize MIDI integration
+        initializeMidiIntegration();
     });
 }
 else {
     // If document is already loaded, initialize immediately
-    initializeMidiIntegration();
+    // Load Piano Mode settings first
     initializePianoModeUI();
+    // Then initialize MIDI integration
+    initializeMidiIntegration();
 }
 // Expose functions globally for integration with existing game code
 window.handleDeviceSelection = handleDeviceSelection;
