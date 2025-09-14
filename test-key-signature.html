@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIDI Key Signature Test</title>
+</head>
+<body>
+    <h1>MIDI Key Signature Test</h1>
+    <p>Testing G major key signature logic...</p>
+    <div id="output"></div>
+
+    <script type="module">
+        // Import the compiled MIDI utils
+        import { requiresAccidental, getKeySignatureInfo } from '/dist/midi/midi-utils.js';
+
+        function isBlackKeyPressed(midiNote) {
+            const noteIndex = midiNote % 12;
+            return [1, 3, 6, 8, 10].includes(noteIndex);
+        }
+
+        function testKeySignature() {
+            const output = document.getElementById('output');
+            
+            // Test G major
+            const keySignature = 'G';
+            const keyInfo = getKeySignatureInfo(keySignature);
+            
+            output.innerHTML += `<h2>Testing ${keyInfo.name}</h2>`;
+            output.innerHTML += `<p>Sharps: [${keyInfo.sharps.join(', ')}]</p>`;
+            
+            // Test F natural (MIDI 65)
+            const f_natural = 65;
+            const requiresBlackF = requiresAccidental(f_natural, keySignature);
+            const isBlackF = isBlackKeyPressed(f_natural);
+            const shouldAcceptF = requiresBlackF === isBlackF;
+            
+            output.innerHTML += `<p>F natural (MIDI ${f_natural}):</p>`;
+            output.innerHTML += `<p>  - Requires black key: ${requiresBlackF}</p>`;
+            output.innerHTML += `<p>  - Is black key: ${isBlackF}</p>`;
+            output.innerHTML += `<p>  - Should accept: ${shouldAcceptF}</p>`;
+            
+            // Test F# (MIDI 66)
+            const f_sharp = 66;
+            const requiresBlackFs = requiresAccidental(f_sharp, keySignature);
+            const isBlackFs = isBlackKeyPressed(f_sharp);
+            const shouldAcceptFs = requiresBlackFs === isBlackFs;
+            
+            output.innerHTML += `<p>F# (MIDI ${f_sharp}):</p>`;
+            output.innerHTML += `<p>  - Requires black key: ${requiresBlackFs}</p>`;
+            output.innerHTML += `<p>  - Is black key: ${isBlackFs}</p>`;
+            output.innerHTML += `<p>  - Should accept: ${shouldAcceptFs}</p>`;
+            
+            output.innerHTML += '<h3>Summary:</h3>';
+            output.innerHTML += `<p>F natural should be: ${shouldAcceptF ? 'ACCEPTED' : 'REJECTED'}</p>`;
+            output.innerHTML += `<p>F# should be: ${shouldAcceptFs ? 'ACCEPTED' : 'REJECTED'}</p>`;
+        }
+
+        testKeySignature();
+    </script>
+</body>
+</html>
