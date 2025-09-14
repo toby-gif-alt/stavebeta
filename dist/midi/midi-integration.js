@@ -67,8 +67,16 @@ function registerMidiNoteHandler() {
             // Only process input if the target clef is active
             const leftHandActive = pianoModeSettings.leftHand !== 'none';
             const rightHandActive = pianoModeSettings.rightHand !== 'none';
-            shouldProcessInput = (targetClef === 'bass' && leftHandActive) ||
-                (targetClef === 'treble' && rightHandActive);
+            // If no hands are configured in hard mode, allow input from both clefs
+            // This prevents key signature enforcement from being blocked by unconfigured hands
+            if (!leftHandActive && !rightHandActive) {
+                shouldProcessInput = true; // Allow all input when hands aren't configured
+                console.log(`Hard mode with no hands configured - allowing all MIDI input`);
+            }
+            else {
+                shouldProcessInput = (targetClef === 'bass' && leftHandActive) ||
+                    (targetClef === 'treble' && rightHandActive);
+            }
             console.log(`Hard mode MIDI input: note=${noteForGame}, midi=${noteMapping.midiNote}, targetClef=${targetClef}, leftHand=${pianoModeSettings.leftHand}, rightHand=${pianoModeSettings.rightHand}, shouldProcess=${shouldProcessInput}`);
         }
         if (shouldProcessInput) {

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Key Signature Test - Fixed</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .key-info {
+            background: #e8f4f8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .midi-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎹 MIDI Key Signature Test - Fixed</h1>
+    <p>This page tests the MIDI key signature fix for the Note Reading Game.</p>
+    
+    <div class="test-section">
+        <h2>🔧 Fix Applied</h2>
+        <div class="status success">
+            ✅ <strong>Fixed:</strong> MIDI input now works correctly in key signatures when Piano Mode hard mode is enabled but hands are not configured.
+        </div>
+        <div class="key-info">
+            <strong>Problem:</strong> In G major, neither F nor F# were working on MIDI keyboard.<br>
+            <strong>Root Cause:</strong> Hard mode hand filtering was blocking valid key signature input.<br>
+            <strong>Solution:</strong> Allow all MIDI input when no hands are configured in hard mode.
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎼 Key Signature Test: G Major</h2>
+        <div class="key-info">
+            <strong>G Major Key Signature:</strong> F♯ (F sharp)<br>
+            This means all F notes should be played as F♯.
+        </div>
+        
+        <div id="midiStatus" class="status info">Checking MIDI support...</div>
+        
+        <h3>Expected Behavior:</h3>
+        <ul>
+            <li>✅ <strong>F♯ (black key):</strong> Should be ACCEPTED</li>
+            <li>❌ <strong>F natural (white key):</strong> Should be REJECTED</li>
+        </ul>
+        
+        <h3>Test Results:</h3>
+        <div id="testResults"></div>
+        
+        <h3>MIDI Input Log:</h3>
+        <div id="midiLog" class="midi-log">Waiting for MIDI input...</div>
+        
+        <button id="testButton" onclick="runTest()">Run Test</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Manual Testing Instructions</h2>
+        <ol>
+            <li>Connect a MIDI keyboard to your computer</li>
+            <li>Ensure the browser supports Web MIDI API (Chrome/Edge recommended)</li>
+            <li>Click "Run Test" to initialize MIDI with G major key signature</li>
+            <li>Press F natural (white key) - should be rejected</li>
+            <li>Press F♯ (black key) - should be accepted</li>
+            <li>Check the log to see the detailed processing results</li>
+        </ol>
+    </div>
+
+    <script type="module">
+        import { requiresAccidental, getKeySignatureInfo } from './dist/midi/midi-utils.js';
+
+        let midiAccess = null;
+        let testActive = false;
+        
+        // Simulate Piano Mode settings as they would be in the actual game
+        const pianoModeSettings = {
+            isActive: true,
+            hardMode: true,
+            leftHand: 'none',
+            rightHand: 'none',
+            keySignature: 'G'
+        };
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('midiLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#d32f2f' : type === 'success' ? '#388e3c' : type === 'warning' ? '#f57c00' : '#1976d2';
+            logDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('midiStatus');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        function clearLog() {
+            document.getElementById('midiLog').innerHTML = 'Log cleared...<br>';
+        }
+
+        function isBlackKeyPressed(midiNote) {
+            const noteIndex = midiNote % 12;
+            return [1, 3, 6, 8, 10].includes(noteIndex);
+        }
+
+        function getNaturalNoteForGame(midiNote) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const noteIndex = midiNote % 12;
+            const fullNoteName = noteNames[noteIndex];
+            return fullNoteName.includes('#') ? fullNoteName.charAt(0) : fullNoteName.charAt(0);
+        }
+
+        function processMidiInput(midiNote) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const noteName = noteNames[midiNote % 12];
+            
+            log(`🎹 MIDI Input: ${noteName} (MIDI ${midiNote})`);
+
+            // Apply the same logic as the fixed MIDI integration
+            if (pianoModeSettings.isActive && pianoModeSettings.keySignature && pianoModeSettings.keySignature !== 'C') {
+                const requiresBlackKey = requiresAccidental(midiNote, pianoModeSettings.keySignature);
+                const isBlackKey = isBlackKeyPressed(midiNote);
+                
+                log(`  Key signature check: requires ${requiresBlackKey ? 'black' : 'white'} key, got ${isBlackKey ? 'black' : 'white'} key`);
+                
+                if (requiresBlackKey !== isBlackKey) {
+                    log(`  ❌ REJECTED by key signature: ${pianoModeSettings.keySignature} major requires ${requiresBlackKey ? 'black' : 'white'} key`, 'error');
+                    return false;
+                }
+                log(`  ✅ Key signature check passed`, 'success');
+            }
+
+            // Hard mode logic with fix
+            let shouldProcessInput = true;
+            if (pianoModeSettings.isActive && pianoModeSettings.hardMode) {
+                const leftHandActive = pianoModeSettings.leftHand !== 'none';
+                const rightHandActive = pianoModeSettings.rightHand !== 'none';
+                
+                log(`  Hard mode: leftHand=${pianoModeSettings.leftHand}, rightHand=${pianoModeSettings.rightHand}`);
+                
+                if (!leftHandActive && !rightHandActive) {
+                    shouldProcessInput = true;
+                    log(`  ✅ Hard mode with no hands configured - allowing all input`, 'success');
+                } else {
+                    const targetClef = midiNote <= 59 ? 'bass' : 'treble';
+                    shouldProcessInput = (targetClef === 'bass' && leftHandActive) || 
+                                        (targetClef === 'treble' && rightHandActive);
+                    log(`  Hand filtering: targetClef=${targetClef}, result=${shouldProcessInput ? 'ACCEPT' : 'REJECT'}`, shouldProcessInput ? 'success' : 'warning');
+                }
+            }
+
+            if (shouldProcessInput) {
+                const noteForGame = getNaturalNoteForGame(midiNote);
+                log(`  ✅ FINAL RESULT: ACCEPTED - would send "${noteForGame}" to game`, 'success');
+                return true;
+            } else {
+                log(`  ❌ FINAL RESULT: REJECTED by hand filtering`, 'error');
+                return false;
+            }
+        }
+
+        async function initializeMIDI() {
+            try {
+                if (!navigator.requestMIDIAccess) {
+                    throw new Error('Web MIDI API not supported');
+                }
+                
+                midiAccess = await navigator.requestMIDIAccess();
+                
+                // Set up MIDI input listeners
+                for (let input of midiAccess.inputs.values()) {
+                    input.onmidimessage = handleMIDIMessage;
+                    log(`📱 Connected to MIDI device: ${input.name}`);
+                }
+                
+                if (midiAccess.inputs.size === 0) {
+                    updateStatus('No MIDI devices found. Please connect a MIDI keyboard.', 'warning');
+                    log('⚠️  No MIDI devices detected', 'warning');
+                } else {
+                    updateStatus(`Connected to ${midiAccess.inputs.size} MIDI device(s)`, 'success');
+                    log(`✅ MIDI initialized with ${midiAccess.inputs.size} device(s)`, 'success');
+                }
+                
+            } catch (error) {
+                updateStatus(`MIDI Error: ${error.message}`, 'error');
+                log(`❌ MIDI Error: ${error.message}`, 'error');
+            }
+        }
+
+        function handleMIDIMessage(message) {
+            if (!testActive) return;
+            
+            const [command, midiNote, velocity] = message.data;
+            
+            // Only process note on events (velocity > 0)
+            if (command === 144 && velocity > 0) {
+                processMidiInput(midiNote);
+            }
+        }
+
+        window.runTest = async function() {
+            if (!midiAccess) {
+                await initializeMIDI();
+            }
+            
+            testActive = true;
+            log('🧪 Test started - Piano Mode settings:', 'info');
+            log(`   - Key Signature: ${pianoModeSettings.keySignature} major`);
+            log(`   - Hard Mode: ${pianoModeSettings.hardMode}`);
+            log(`   - Left Hand: ${pianoModeSettings.leftHand}`);
+            log(`   - Right Hand: ${pianoModeSettings.rightHand}`);
+            log('🎹 Play F natural and F♯ on your MIDI keyboard to test...');
+            
+            updateStatus('Test active - play F and F♯ on your MIDI keyboard', 'info');
+            document.getElementById('testButton').textContent = 'Test Running...';
+            document.getElementById('testButton').disabled = true;
+            
+            // Re-enable button after 10 seconds
+            setTimeout(() => {
+                document.getElementById('testButton').textContent = 'Run Test Again';
+                document.getElementById('testButton').disabled = false;
+                if (testActive) {
+                    log('🏁 Test session ended (10 seconds)', 'info');
+                    testActive = false;
+                }
+            }, 10000);
+        };
+
+        // Auto-initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 MIDI Key Signature Test page loaded');
+            log('📋 Click "Run Test" to begin testing');
+            initializeMIDI();
+        });
+    </script>
+</body>
+</html>
