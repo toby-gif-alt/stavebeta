@@ -2008,11 +2008,11 @@ async function initializeGame() {
 // Main game loop
 function gameLoop() {
   if (gameRunning) {
+    drawStaff(currentClef); // Draw staff first to ensure stave objects exist
     spawnNote(); // Changed from spawnNoteAndMeteor
     updateMovingNotes();
     updateSpaceship();
     updateExplosions();
-    drawStaff(currentClef);
     
     // FIXED: Remove throttled cleanup from game loop - now runs immediately on MIDI input
     // Chord cleanup is now handled directly in handleNoteInputWithOctave for responsive input
