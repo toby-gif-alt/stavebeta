@@ -400,10 +400,17 @@ function updateClefButtonsForPianoMode(pianoModeActive) {
 function updateClefButtons() {
   document.querySelectorAll('.clef-btn').forEach(btn => {
     btn.classList.remove('active');
-    // For UI purposes, hardMode should display as grand staff being active
-    const displayClef = gameSettings.clef === 'hardMode' ? 'grand' : gameSettings.clef;
-    if (btn.dataset.clef === displayClef) {
-      btn.classList.add('active');
+    
+    // For hardMode, show both treble and bass clefs as selected (independent mode)
+    if (gameSettings.clef === 'hardMode') {
+      if (btn.dataset.clef === 'treble' || btn.dataset.clef === 'bass') {
+        btn.classList.add('active');
+      }
+    } else {
+      // For regular modes, show the selected clef as active
+      if (btn.dataset.clef === gameSettings.clef) {
+        btn.classList.add('active');
+      }
     }
   });
 }

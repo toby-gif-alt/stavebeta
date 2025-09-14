@@ -353,13 +353,13 @@ function loadGameSettings() {
     currentClef = settings.clef || 'treble';
     maxLedgerLines = settings.ledgerLines !== undefined ? settings.ledgerLines : 4;
     
-    // Validate hardMode clef: only allow hardMode if Piano Mode is enabled and active
-    if (currentClef === 'hardMode' && !gameSettings.pianoMode.enabled) {
+    // Validate hardMode clef: only allow hardMode if Piano Mode is active
+    if (currentClef === 'hardMode' && !gameSettings.pianoMode.active) {
       currentClef = 'treble'; // Reset to default if hardMode without Piano Mode
     }
     
     // Load Piano Mode settings
-    pianoModeActive = gameSettings.pianoMode.enabled;
+    pianoModeActive = gameSettings.pianoMode.active;
     pianoModeSettings = { ...gameSettings.pianoMode };
     
     // Sync property mappings for Piano Mode settings from menu
@@ -1265,7 +1265,22 @@ function drawExplosions() {
 
 // Check if there's enough space to spawn a new note without overlap
 function canSpawnNote(minDistance = 100) {
-  // For both normal mode and piano mode, only allow one note/chord at a time
+  // In hard mode, allow up to 2 notes (one per clef) for independent completion
+  if (pianoModeActive && pianoModeSettings.hardMode && currentClef === 'hardMode') {
+    const leftHandActive = pianoModeSettings.leftHand !== 'none';
+    const rightHandActive = pianoModeSettings.rightHand !== 'none';
+    
+    if (leftHandActive && rightHandActive) {
+      // Count notes per clef
+      const bassNotes = movingNotes.filter(note => note.clef === 'bass');
+      const trebleNotes = movingNotes.filter(note => note.clef === 'treble');
+      
+      // Allow one note per active clef
+      return bassNotes.length === 0 || trebleNotes.length === 0;
+    }
+  }
+  
+  // For normal modes, only allow one note/chord at a time
   if (movingNotes.length > 0) {
     return false;
   }
@@ -1288,6 +1303,11 @@ function spawnNote() {
     }
     
     const noteData = pickRandomNote(); // Now returns note object directly or array for chords
+    
+    // Handle case where no note should be spawned (e.g., hard mode with both clefs full)
+    if (!noteData) {
+      return; // Don't spawn if pickRandomNote returns null
+    }
     
     // Speed increases more gradually from level 3 onward
     let baseSpeed;
@@ -1808,46 +1828,46 @@ function pickRandomNote() {
     const rightHandActive = rightHandMode !== 'none';
     
     if (leftHandActive || rightHandActive) {
-      // In hard mode, both clefs generate notes simultaneously when both hands are active
+      // In hard mode with independent clefs, generate notes for individual clefs
       if (pianoModeSettings.hardMode && leftHandActive && rightHandActive) {
-        // Generate notes for both clefs simultaneously
-        const bassNotes = getNotesForPianoModeHand(leftHandMode, 'bass', availableNotes);
-        const trebleNotes = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+        // Check which clef needs a new note
+        const bassNotes = movingNotes.filter(note => note.clef === 'bass');
+        const trebleNotes = movingNotes.filter(note => note.clef === 'treble');
         
-        const bothHandNotes = [];
-        
-        // Add bass note if available
-        if (bassNotes.length > 0) {
-          if (leftHandMode === 'chords' && bassNotes.length >= 2) {
-            const bassChord = generateChord(bassNotes);
-            if (Array.isArray(bassChord)) {
-              bothHandNotes.push(...bassChord);
-            } else {
-              bothHandNotes.push(bassChord);
-            }
-          } else {
-            const randomBassIndex = Math.floor(Math.random() * bassNotes.length);
-            bothHandNotes.push(bassNotes[randomBassIndex]);
-          }
+        // Prefer clef that has no active notes, or randomly choose if both are empty
+        let targetClef = null;
+        if (bassNotes.length === 0 && trebleNotes.length === 0) {
+          // Both clefs are empty, randomly choose
+          targetClef = Math.random() < 0.5 ? 'bass' : 'treble';
+        } else if (bassNotes.length === 0) {
+          targetClef = 'bass';
+        } else if (trebleNotes.length === 0) {
+          targetClef = 'treble';
+        } else {
+          // Both clefs have notes, don't spawn
+          return null;
         }
         
-        // Add treble note if available
-        if (trebleNotes.length > 0) {
-          if (rightHandMode === 'chords' && trebleNotes.length >= 2) {
-            const trebleChord = generateChord(trebleNotes);
-            if (Array.isArray(trebleChord)) {
-              bothHandNotes.push(...trebleChord);
+        if (targetClef === 'bass') {
+          const bassNotesAvailable = getNotesForPianoModeHand(leftHandMode, 'bass', availableNotes);
+          if (bassNotesAvailable.length > 0) {
+            if (leftHandMode === 'chords' && bassNotesAvailable.length >= 2) {
+              return generateChord(bassNotesAvailable);
             } else {
-              bothHandNotes.push(trebleChord);
+              const randomBassIndex = Math.floor(Math.random() * bassNotesAvailable.length);
+              return bassNotesAvailable[randomBassIndex];
             }
-          } else {
-            const randomTrebleIndex = Math.floor(Math.random() * trebleNotes.length);
-            bothHandNotes.push(trebleNotes[randomTrebleIndex]);
           }
-        }
-        
-        if (bothHandNotes.length > 0) {
-          return bothHandNotes; // Return array of notes for both clefs
+        } else if (targetClef === 'treble') {
+          const trebleNotesAvailable = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+          if (trebleNotesAvailable.length > 0) {
+            if (rightHandMode === 'chords' && trebleNotesAvailable.length >= 2) {
+              return generateChord(trebleNotesAvailable);
+            } else {
+              const randomTrebleIndex = Math.floor(Math.random() * trebleNotesAvailable.length);
+              return trebleNotesAvailable[randomTrebleIndex];
+            }
+          }
         }
       } else {
         // Normal Piano Mode behavior - randomly choose which hand to generate for
