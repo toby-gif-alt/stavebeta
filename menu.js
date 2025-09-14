@@ -8,6 +8,7 @@ let gameSettings = {
     enabled: false,
     active: false,  // New property for user activation
     strictMode: false,
+    hardMode: false,  // New property for independent clef operation
     leftHand: 'none',
     rightHand: 'none'
   }
@@ -91,6 +92,7 @@ function loadSettings() {
         enabled: false,
         active: false,
         strictMode: false,
+        hardMode: false,  // Add hardMode property
         leftHand: 'none',
         rightHand: 'none',
         ...gameSettings.pianoMode
@@ -311,6 +313,7 @@ function updatePianoModeUI() {
 function updatePianoModeControls() {
   const pianoModeActiveToggle = document.getElementById('pianoModeActiveToggle');
   const strictModeToggle = document.getElementById('strictModeToggle');
+  const hardModeToggle = document.getElementById('hardModeToggle');
   const leftHandSelect = document.getElementById('leftHandSelect');
   const rightHandSelect = document.getElementById('rightHandSelect');
   
@@ -325,6 +328,7 @@ function updatePianoModeControls() {
   if (isMobileDevice()) {
     if (pianoModeActiveToggle) pianoModeActiveToggle.disabled = true;
     if (strictModeToggle) strictModeToggle.disabled = true;
+    if (hardModeToggle) hardModeToggle.disabled = true;
     if (leftHandSelect) leftHandSelect.disabled = true;
     if (rightHandSelect) rightHandSelect.disabled = true;
     return;
@@ -339,6 +343,11 @@ function updatePianoModeControls() {
   if (strictModeToggle) {
     strictModeToggle.checked = gameSettings.pianoMode.strictMode;
     strictModeToggle.disabled = !gameSettings.pianoMode.active;
+  }
+  
+  if (hardModeToggle) {
+    hardModeToggle.checked = gameSettings.pianoMode.hardMode;
+    hardModeToggle.disabled = !gameSettings.pianoMode.active;
   }
   
   if (leftHandSelect) {
@@ -457,6 +466,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Piano Mode option handlers
   document.getElementById('strictModeToggle').addEventListener('change', function() {
     gameSettings.pianoMode.strictMode = this.checked;
+    saveSettings();
+    // Notify the game if it's running
+    if (typeof window.updateGamePianoModeSettings === 'function') {
+      window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+  });
+  
+  // Hard Mode toggle handler
+  document.getElementById('hardModeToggle').addEventListener('change', function() {
+    gameSettings.pianoMode.hardMode = this.checked;
     saveSettings();
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {

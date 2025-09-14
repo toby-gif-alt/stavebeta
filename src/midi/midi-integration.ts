@@ -25,6 +25,7 @@ let pianoModeSettings: PianoModeSettings = {
   isActive: false,
   chordMode: false,
   forceGrandStaff: true,
+  hardMode: false,
   leftHand: 'none',
   rightHand: 'none'
 };
