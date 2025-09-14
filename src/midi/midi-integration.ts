@@ -43,18 +43,9 @@ export function reinitializeMidiAfterRestart(): void {
     // Get the appropriate note for the game based on Piano Mode settings
     const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
     
-    // Determine which clef this note should target in piano mode
-    let targetClef: 'treble' | 'bass' | null = null;
-    if (pianoModeSettings.isActive && typeof (window as any).currentClef !== 'undefined' && (window as any).currentClef === 'grand') {
-      // B3 = MIDI 59, C4 = MIDI 60
-      // Bass clef: B3 and below (MIDI <= 59)
-      // Treble clef: C4 and above (MIDI >= 60)
-      targetClef = noteMapping.midiNote <= 59 ? 'bass' : 'treble';
-    }
-    
-    // Call the enhanced octave-aware game input handler for Piano Mode
+    // Call the octave-aware game input handler for Piano Mode strict mode support
     if (typeof (window as any).handleNoteInputWithOctave === 'function') {
-      (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave, targetClef);
+      (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave);
     } else if (typeof (window as any).handleNoteInput === 'function') {
       // Fallback to regular handler if octave-aware version not available
       (window as any).handleNoteInput(noteForGame);
@@ -81,18 +72,9 @@ export function initializeMidiIntegration(): void {
     // Get the appropriate note for the game based on Piano Mode settings
     const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
     
-    // Determine which clef this note should target in piano mode
-    let targetClef: 'treble' | 'bass' | null = null;
-    if (pianoModeSettings.isActive && typeof (window as any).currentClef !== 'undefined' && (window as any).currentClef === 'grand') {
-      // B3 = MIDI 59, C4 = MIDI 60
-      // Bass clef: B3 and below (MIDI <= 59)
-      // Treble clef: C4 and above (MIDI >= 60)
-      targetClef = noteMapping.midiNote <= 59 ? 'bass' : 'treble';
-    }
-    
-    // Call the enhanced octave-aware game input handler for Piano Mode
+    // Call the octave-aware game input handler for Piano Mode strict mode support
     if (typeof (window as any).handleNoteInputWithOctave === 'function') {
-      (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave, targetClef);
+      (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave);
     } else if (typeof (window as any).handleNoteInput === 'function') {
       // Fallback to regular handler if octave-aware version not available
       (window as any).handleNoteInput(noteForGame);
