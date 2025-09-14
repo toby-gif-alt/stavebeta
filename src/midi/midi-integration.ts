@@ -13,6 +13,7 @@ declare global {
     isPianoModeActive: () => boolean;
     getPianoModeSettings: () => PianoModeSettings;
     reinitializeMidiAfterRestart: () => void;
+    updateMidiPianoModeSettings: (settings: Partial<PianoModeSettings>) => void;
   }
 }
 
@@ -40,6 +41,18 @@ export function reinitializeMidiAfterRestart(): void {
   // Re-register the note input callback since the game might have reset handlers
   midiManager.clearNoteInputCallbacks();
   
+  // Use the existing note processing function to avoid duplication
+  registerMidiNoteHandler();
+  
+  // Update UI to reflect current status
+  updateMidiUI();
+  
+  console.log('MIDI reinitialization complete');
+}
+/**
+ * Register the MIDI note input handler with proper hard mode logic
+ */
+function registerMidiNoteHandler(): void {
   midiManager.onNoteInput((noteMapping: MidiNoteMapping) => {
     // Get the appropriate note for the game based on Piano Mode settings
     const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
@@ -57,6 +70,8 @@ export function reinitializeMidiAfterRestart(): void {
       
       shouldProcessInput = (targetClef === 'bass' && leftHandActive) || 
                           (targetClef === 'treble' && rightHandActive);
+                          
+      console.log(`Hard mode MIDI input: note=${noteForGame}, midi=${noteMapping.midiNote}, targetClef=${targetClef}, leftHand=${pianoModeSettings.leftHand}, rightHand=${pianoModeSettings.rightHand}, shouldProcess=${shouldProcessInput}`);
     }
     
     if (shouldProcessInput) {
@@ -75,14 +90,12 @@ export function reinitializeMidiAfterRestart(): void {
       
       // Visual feedback for MIDI input
       highlightMidiInput(noteForGame);
+    } else {
+      console.log(`MIDI input filtered out: note=${noteForGame}, midi=${noteMapping.midiNote}, hardMode=${pianoModeSettings.hardMode}`);
     }
   });
-  
-  // Update UI to reflect current status
-  updateMidiUI();
-  
-  console.log('MIDI reinitialization complete');
 }
+
 export function initializeMidiIntegration(): void {
   // Check if handleNoteInput function exists (from script.js)
   if (typeof (window as any).handleNoteInput !== 'function') {
@@ -90,44 +103,9 @@ export function initializeMidiIntegration(): void {
     return;
   }
 
-  // Register MIDI input callback to route to game input handler
-  midiManager.onNoteInput((noteMapping: MidiNoteMapping) => {
-    // Get the appropriate note for the game based on Piano Mode settings
-    const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
-    
-    // In hard mode, determine which clef this MIDI note should affect
-    let shouldProcessInput = true;
-    let targetClef: 'bass' | 'treble' | null = null;
-    
-    if (pianoModeSettings.isActive && pianoModeSettings.hardMode) {
-      targetClef = getClefForMidiNote(noteMapping.midiNote);
-      
-      // Only process input if the target clef is active
-      const leftHandActive = pianoModeSettings.leftHand !== 'none';
-      const rightHandActive = pianoModeSettings.rightHand !== 'none';
-      
-      shouldProcessInput = (targetClef === 'bass' && leftHandActive) || 
-                          (targetClef === 'treble' && rightHandActive);
-    }
-    
-    if (shouldProcessInput) {
-      // Call the octave-aware game input handler for Piano Mode strict mode support
-      if (typeof (window as any).handleNoteInputWithOctave === 'function') {
-        // Pass the target clef information for hard mode
-        if (pianoModeSettings.hardMode && targetClef) {
-          (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave, targetClef);
-        } else {
-          (window as any).handleNoteInputWithOctave(noteForGame, noteMapping.octave);
-        }
-      } else if (typeof (window as any).handleNoteInput === 'function') {
-        // Fallback to regular handler if octave-aware version not available
-        (window as any).handleNoteInput(noteForGame);
-      }
-      
-      // Visual feedback for MIDI input
-      highlightMidiInput(noteForGame);
-    }
-  });
+  // Register MIDI input callback using the consolidated handler
+  registerMidiNoteHandler();
+
 
   // Set up device connection monitoring
   midiManager.on('deviceConnected', (device: MidiDevice) => {
@@ -339,12 +317,8 @@ export function destroyMidiIntegration(): void {
  */
 function updatePianoModeUI(): void {
   // Piano Mode controls have been removed from the game - settings are now handled in main menu
-  // This function now just calls the game-side handler to update the clef mode
-  
-  // Call the game-side Piano Mode change handler if available
-  if (typeof (window as any).onPianoModeChanged === 'function') {
-    (window as any).onPianoModeChanged(pianoModeSettings);
-  }
+  // This function is mainly for future UI updates if needed
+  console.log('MIDI Piano Mode UI updated with settings:', pianoModeSettings);
 }
 
 /**
@@ -358,11 +332,15 @@ export function getPianoModeSettings(): PianoModeSettings {
  * Update Piano Mode settings
  */
 export function updatePianoModeSettings(settings: Partial<PianoModeSettings>): void {
+  console.log('Updating MIDI Piano Mode settings:', settings);
   pianoModeSettings = { ...pianoModeSettings, ...settings };
   updatePianoModeUI();
   
   // Save to localStorage
   localStorage.setItem('pianoModeSettings', JSON.stringify(pianoModeSettings));
+  
+  // Log the updated settings for debugging
+  console.log('Updated MIDI Piano Mode settings:', pianoModeSettings);
 }
 
 /**
@@ -403,3 +381,4 @@ window.isPianoModeActive = () => pianoModeSettings.isActive;
 window.getPianoModeSettings = getPianoModeSettings;
 window.getMenuMidiStatus = () => midiManager.getStatus();
 window.reinitializeMidiAfterRestart = reinitializeMidiAfterRestart;
+window.updateMidiPianoModeSettings = updatePianoModeSettings;

@@ -389,6 +389,12 @@ function onPianoModeChanged(settings) {
     pianoModeSettings.hardMode = settings.hardMode;
   }
   
+  console.log('onPianoModeChanged called with settings:', settings);
+  console.log('Updated game pianoModeSettings:', pianoModeSettings);
+  
+  // Do NOT call updateMidiPianoModeSettings from here to avoid circular dependency
+  // The MIDI integration will be updated directly by updateGamePianoModeSettings
+  
   if (pianoModeActive) {
     if (pianoModeSettings.hardMode) {
       // Hard Mode: Use independent treble and bass clefs instead of grand staff
@@ -422,7 +428,12 @@ function updateGamePianoModeSettings(settings) {
     pianoModeSettings.strictMode = settings.strictMode;
   }
   
-  console.log('Piano mode settings updated:', pianoModeSettings);
+  console.log('Game Piano mode settings updated:', pianoModeSettings);
+  
+  // Also update the MIDI integration settings if available
+  if (typeof window.updateMidiPianoModeSettings === 'function') {
+    window.updateMidiPianoModeSettings(settings);
+  }
 }
 
 // Make functions available globally
