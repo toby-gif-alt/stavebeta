@@ -93,9 +93,10 @@ export declare const KEY_SIGNATURES: Record<string, KeySignatureInfo>;
 export declare function getKeySignatureInfo(keySignature: string): KeySignatureInfo;
 /**
  * Check if a MIDI note requires an accidental in the given key signature
+ * Returns true if the note letter in this key signature should be played as a black key
  * @param midiNote MIDI note number
  * @param keySignature Key signature code
- * @returns True if the note requires playing the black key
+ * @returns True if this note letter should be played as black key in this key signature
  */
 export declare function requiresAccidental(midiNote: number, keySignature: string): boolean;
 /**
