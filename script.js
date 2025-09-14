@@ -392,10 +392,8 @@ function onPianoModeChanged(settings) {
   console.log('onPianoModeChanged called with settings:', settings);
   console.log('Updated game pianoModeSettings:', pianoModeSettings);
   
-  // Also update the MIDI integration settings if available
-  if (typeof window.updateMidiPianoModeSettings === 'function') {
-    window.updateMidiPianoModeSettings(settings);
-  }
+  // Do NOT call updateMidiPianoModeSettings from here to avoid circular dependency
+  // The MIDI integration will be updated directly by updateGamePianoModeSettings
   
   if (pianoModeActive) {
     if (pianoModeSettings.hardMode) {

@@ -317,12 +317,8 @@ export function destroyMidiIntegration(): void {
  */
 function updatePianoModeUI(): void {
   // Piano Mode controls have been removed from the game - settings are now handled in main menu
-  // This function now just calls the game-side handler to update the clef mode
-  
-  // Call the game-side Piano Mode change handler if available
-  if (typeof (window as any).onPianoModeChanged === 'function') {
-    (window as any).onPianoModeChanged(pianoModeSettings);
-  }
+  // This function is mainly for future UI updates if needed
+  console.log('MIDI Piano Mode UI updated with settings:', pianoModeSettings);
 }
 
 /**
