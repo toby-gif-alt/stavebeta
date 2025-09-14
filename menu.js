@@ -9,7 +9,8 @@ let gameSettings = {
     active: false,  // New property for user activation
     strictMode: false,
     leftHand: 'none',
-    rightHand: 'none'
+    rightHand: 'none',
+    hardMode: false
   }
 };
 
@@ -83,7 +84,8 @@ function loadSettings() {
         active: false,
         strictMode: false,
         leftHand: 'none',
-        rightHand: 'none'
+        rightHand: 'none',
+        hardMode: false
       };
     } else {
       // Fill in any missing properties
@@ -93,6 +95,7 @@ function loadSettings() {
         strictMode: false,
         leftHand: 'none',
         rightHand: 'none',
+        hardMode: false,
         ...gameSettings.pianoMode
       };
     }
@@ -112,14 +115,9 @@ function saveSettings() {
 function updateSettingsDisplay() {
   const musicToggle = document.getElementById('musicToggle');
   const soundEffectsToggle = document.getElementById('soundEffectsToggle');
-  const hardModeToggle = document.getElementById('hardModeToggle');
   
   if (musicToggle) musicToggle.checked = gameSettings.music;
   if (soundEffectsToggle) soundEffectsToggle.checked = gameSettings.soundEffects;
-  // Hard mode toggle removed from main menu
-  if (hardModeToggle) {
-    hardModeToggle.checked = gameSettings.ledgerLines;
-  }
   
   // Update difficulty dropdown
   updateDifficultyDisplay();
@@ -311,6 +309,7 @@ function updatePianoModeUI() {
 function updatePianoModeControls() {
   const pianoModeActiveToggle = document.getElementById('pianoModeActiveToggle');
   const strictModeToggle = document.getElementById('strictModeToggle');
+  const hardModeToggle = document.getElementById('hardModeToggle');
   const leftHandSelect = document.getElementById('leftHandSelect');
   const rightHandSelect = document.getElementById('rightHandSelect');
   
@@ -325,6 +324,7 @@ function updatePianoModeControls() {
   if (isMobileDevice()) {
     if (pianoModeActiveToggle) pianoModeActiveToggle.disabled = true;
     if (strictModeToggle) strictModeToggle.disabled = true;
+    if (hardModeToggle) hardModeToggle.disabled = true;
     if (leftHandSelect) leftHandSelect.disabled = true;
     if (rightHandSelect) rightHandSelect.disabled = true;
     return;
@@ -339,6 +339,11 @@ function updatePianoModeControls() {
   if (strictModeToggle) {
     strictModeToggle.checked = gameSettings.pianoMode.strictMode;
     strictModeToggle.disabled = !gameSettings.pianoMode.active;
+  }
+  
+  if (hardModeToggle) {
+    hardModeToggle.checked = gameSettings.pianoMode.hardMode;
+    hardModeToggle.disabled = !gameSettings.pianoMode.active;
   }
   
   if (leftHandSelect) {
@@ -457,6 +462,15 @@ document.addEventListener('DOMContentLoaded', function() {
   // Piano Mode option handlers
   document.getElementById('strictModeToggle').addEventListener('change', function() {
     gameSettings.pianoMode.strictMode = this.checked;
+    saveSettings();
+    // Notify the game if it's running
+    if (typeof window.updateGamePianoModeSettings === 'function') {
+      window.updateGamePianoModeSettings(gameSettings.pianoMode);
+    }
+  });
+  
+  document.getElementById('hardModeToggle').addEventListener('change', function() {
+    gameSettings.pianoMode.hardMode = this.checked;
     saveSettings();
     // Notify the game if it's running
     if (typeof window.updateGamePianoModeSettings === 'function') {
