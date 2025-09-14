@@ -1697,6 +1697,163 @@ function getNotesForPianoModeHand(hand, clef, availableNotes) {
   return handNotes;
 }
 
+// Helper function to check if a clef has any active moving notes
+function clefHasActiveNotes(targetClef) {
+  return movingNotes.some(note => note.clef === targetClef);
+}
+
+// Ensure both clefs have notes when both hands are active in piano mode
+function ensureBothClefsHaveNotes() {
+  if (!pianoModeActive || currentClef !== 'grand') return;
+  
+  const leftHandActive = pianoModeSettings.leftHand !== 'none';
+  const rightHandActive = pianoModeSettings.rightHand !== 'none';
+  
+  // Only enforce when both hands are active
+  if (!(leftHandActive && rightHandActive)) return;
+  
+  const bassHasNotes = clefHasActiveNotes('bass');
+  const trebleHasNotes = clefHasActiveNotes('treble');
+  
+  // Spawn notes for clefs that don't have any
+  if (!bassHasNotes) {
+    forceSpawnNoteForClef('bass');
+  }
+  if (!trebleHasNotes) {
+    forceSpawnNoteForClef('treble');
+  }
+}
+
+// Force spawn a note for a specific clef
+function forceSpawnNoteForClef(targetClef) {
+  const leftHandMode = pianoModeSettings.leftHand;
+  const rightHandMode = pianoModeSettings.rightHand;
+  const availableNotes = notePositions[currentClef];
+  
+  let noteData = null;
+  
+  if (targetClef === 'bass' && leftHandMode !== 'none') {
+    const bassNotes = getNotesForPianoModeHand(leftHandMode, 'bass', availableNotes);
+    if (bassNotes.length > 0) {
+      if (leftHandMode === 'chords' && bassNotes.length >= 2) {
+        noteData = generateChord(bassNotes);
+      } else {
+        const randomIndex = Math.floor(Math.random() * bassNotes.length);
+        noteData = bassNotes[randomIndex];
+      }
+    }
+  } else if (targetClef === 'treble' && rightHandMode !== 'none') {
+    const trebleNotes = getNotesForPianoModeHand(rightHandMode, 'treble', availableNotes);
+    if (trebleNotes.length > 0) {
+      if (rightHandMode === 'chords' && trebleNotes.length >= 2) {
+        noteData = generateChord(trebleNotes);
+      } else {
+        const randomIndex = Math.floor(Math.random() * trebleNotes.length);
+        noteData = trebleNotes[randomIndex];
+      }
+    }
+  }
+  
+  if (noteData) {
+    // Create the moving note(s) immediately
+    spawnMovingNotesFromData(noteData);
+  }
+}
+
+// Helper function to spawn moving notes from note data
+function spawnMovingNotesFromData(noteData) {
+  // Calculate speed same as in spawnNote
+  let baseSpeed;
+  if (level === 1) {
+    baseSpeed = 0.8;
+  } else if (level === 2) {
+    baseSpeed = 1.4;
+  } else if (level === 3) {
+    baseSpeed = 1.8;
+  } else if (level === 4) {
+    baseSpeed = 2.2;
+  } else {
+    baseSpeed = 2.2 + (level - 4) * 0.4;
+  }
+  
+  // Handle chord mode (multiple notes)
+  if (Array.isArray(noteData)) {
+    // Spawn chord
+    let spawnX = canvas.width + 20;
+    if (currentClef === 'grand') {
+      if (currentTrebleStave) {
+        spawnX = currentTrebleStave.x + currentTrebleStave.width;
+      }
+    } else if (currentClef === 'treble' && currentTrebleStave) {
+      spawnX = currentTrebleStave.x + currentTrebleStave.width;
+    } else if (currentClef === 'bass' && currentBassStave) {
+      spawnX = currentBassStave.x + currentBassStave.width;
+    }
+    const baseX = spawnX;
+    const chordId = Date.now() + Math.random(); // Ensure unique ID
+    
+    noteData.forEach((singleNote, index) => {
+      let xOffset = 0;
+      if (index > 0) {
+        const prevNote = noteData[index - 1];
+        const staffDiff = Math.abs(singleNote.staffLocalIndex - prevNote.staffLocalIndex);
+        if (staffDiff === 1) {
+          xOffset = (index % 2 === 0) ? -8 : 8;
+        }
+      }
+      
+      const movingNote = {
+        x: baseX + xOffset,
+        staffLocalIndex: singleNote.staffLocalIndex,
+        note: singleNote.note,
+        letter: singleNote.letter,
+        octave: singleNote.octave,
+        midi: singleNote.midi,
+        scientific: singleNote.scientific,
+        clef: singleNote.clef,
+        speed: baseSpeed,
+        id: Date.now() + index,
+        line: singleNote.line || singleNote.staffLocalIndex,
+        isChord: true,
+        chordId: chordId,
+        chordSize: noteData.length
+      };
+      
+      movingNotes.push(movingNote);
+    });
+  } else {
+    // Create single moving note
+    let spawnX = canvas.width + 20;
+    if (currentClef === 'grand') {
+      if (noteData.clef === 'treble' && currentTrebleStave) {
+        spawnX = currentTrebleStave.x + currentTrebleStave.width;
+      } else if (noteData.clef === 'bass' && currentBassStave) {
+        spawnX = currentBassStave.x + currentBassStave.width;
+      }
+    } else if (currentClef === 'treble' && currentTrebleStave) {
+      spawnX = currentTrebleStave.x + currentTrebleStave.width;
+    } else if (currentClef === 'bass' && currentBassStave) {
+      spawnX = currentBassStave.x + currentBassStave.width;
+    }
+    
+    const movingNote = {
+      x: spawnX,
+      staffLocalIndex: noteData.staffLocalIndex,
+      note: noteData.note,
+      letter: noteData.letter,
+      octave: noteData.octave,
+      midi: noteData.midi,
+      scientific: noteData.scientific,
+      clef: noteData.clef || currentClef,
+      speed: baseSpeed,
+      id: Date.now(),
+      line: noteData.line || noteData.staffLocalIndex
+    };
+    
+    movingNotes.push(movingNote);
+  }
+}
+
 function pickRandomNote() {
   const arr = notePositions[currentClef];
   let availableNotes = arr;
@@ -1752,12 +1909,30 @@ function pickRandomNote() {
     const rightHandActive = rightHandMode !== 'none';
     
     if (leftHandActive || rightHandActive) {
-      // Randomly choose which hand to generate for (weighted by which hands are active)
-      const activeHands = [];
-      if (leftHandActive) activeHands.push('left');
-      if (rightHandActive) activeHands.push('right');
+      // Ensure both clefs have active notes when both hands are active
+      const bassHasNotes = clefHasActiveNotes('bass');
+      const trebleHasNotes = clefHasActiveNotes('treble');
       
-      const chosenHand = activeHands[Math.floor(Math.random() * activeHands.length)];
+      let chosenHand;
+      
+      if (leftHandActive && rightHandActive) {
+        // Both hands active - prioritize clef that has no notes
+        if (!bassHasNotes && trebleHasNotes) {
+          chosenHand = 'left'; // Prioritize bass clef
+        } else if (!trebleHasNotes && bassHasNotes) {
+          chosenHand = 'right'; // Prioritize treble clef
+        } else if (!bassHasNotes && !trebleHasNotes) {
+          // Neither has notes - spawn one for each clef randomly
+          chosenHand = Math.random() < 0.5 ? 'left' : 'right';
+        } else {
+          // Both clefs have notes - randomly choose
+          chosenHand = Math.random() < 0.5 ? 'left' : 'right';
+        }
+      } else {
+        // Only one hand active - use that hand
+        if (leftHandActive) chosenHand = 'left';
+        if (rightHandActive) chosenHand = 'right';
+      }
       
       if (chosenHand === 'left' && leftHandActive) {
         // Generate for left hand (bass clef)
@@ -1935,6 +2110,10 @@ function gameLoop() {
   if (gameRunning) {
     drawStaff(currentClef); // Draw staff first to ensure stave objects exist
     spawnNote(); // Changed from spawnNoteAndMeteor
+    
+    // Ensure both clefs have notes in piano mode when both hands are active
+    ensureBothClefsHaveNotes();
+    
     updateMovingNotes();
     updateSpaceship();
     updateExplosions();
@@ -1956,11 +2135,11 @@ async function handleNoteInput(userNote) {
   if (!userNote) return;
   
   // For Piano Mode, use more specific note matching
-  await handleNoteInputWithOctave(userNote, null); // No octave info from keyboard
+  await handleNoteInputWithOctave(userNote, null, null); // No octave info or target clef from keyboard
 }
 
 // Enhanced note input handler with octave support for Piano Mode
-async function handleNoteInputWithOctave(userNote, userOctave) {
+async function handleNoteInputWithOctave(userNote, userOctave, targetClef = null) {
   if (!gameRunning) return;
   
   // FIXED: Clean up stale chord progress immediately on every input to prevent registration failures
@@ -1975,18 +2154,35 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
   // For piano mode with hand independence, only consider notes from active hands' clefs
   movingNotes.forEach((note, index) => {
     if (note.note.toUpperCase() === userNote) {
-      // In piano mode, check if this note belongs to an active hand
+      // In piano mode, check if this note belongs to an active hand and matches the target clef
       if (pianoModeActive && currentClef === 'grand') {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
         
-        // Only consider notes from clefs that have active hands
-        const noteIsFromActiveHand = 
-          (note.clef === 'bass' && leftHandActive) || 
-          (note.clef === 'treble' && rightHandActive);
-        
-        if (!noteIsFromActiveHand) {
-          return; // Skip notes from inactive hands
+        // If we have a targetClef from MIDI input, only consider notes from that clef
+        if (targetClef) {
+          // Only match notes from the target clef (bass for B3 and below, treble for C4 and above)
+          if (note.clef !== targetClef) {
+            return; // Skip notes from non-target clef
+          }
+          
+          // Also check if the target clef has an active hand
+          const targetHandActive = 
+            (targetClef === 'bass' && leftHandActive) || 
+            (targetClef === 'treble' && rightHandActive);
+          
+          if (!targetHandActive) {
+            return; // Skip if the target clef doesn't have an active hand
+          }
+        } else {
+          // For keyboard/button input, consider all notes from active hands
+          const noteIsFromActiveHand = 
+            (note.clef === 'bass' && leftHandActive) || 
+            (note.clef === 'treble' && rightHandActive);
+          
+          if (!noteIsFromActiveHand) {
+            return; // Skip notes from inactive hands
+          }
         }
       }
       
