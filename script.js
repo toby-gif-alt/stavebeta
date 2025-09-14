@@ -395,11 +395,17 @@ function onPianoModeChanged(settings) {
       currentClef = 'hardMode';
       drawStaff(currentClef);
       document.getElementById('clefDisplay').textContent = 'Clef selected: Bass & Treble (Hard Mode)';
+      // Show hard mode help text
+      const hardModeHelp = document.getElementById('hardModeHelp');
+      if (hardModeHelp) hardModeHelp.style.display = 'block';
     } else if (settings.forceGrandStaff && currentClef !== 'grand') {
       // Regular Piano Mode: Force grand staff if setting is enabled
       currentClef = 'grand';
       drawStaff(currentClef);
       document.getElementById('clefDisplay').textContent = 'Clef selected: Grand Stave (Piano Mode)';
+      // Hide hard mode help text
+      const hardModeHelp = document.getElementById('hardModeHelp');
+      if (hardModeHelp) hardModeHelp.style.display = 'none';
     }
   }
   
@@ -2004,6 +2010,12 @@ function updateClefDisplay() {
       'hardMode': 'Bass & Treble (Hard Mode)'
     };
     clefDisplay.textContent = `Clef selected: ${clefNames[currentClef]}`;
+    
+    // Show/hide hard mode help text based on current clef
+    const hardModeHelp = document.getElementById('hardModeHelp');
+    if (hardModeHelp) {
+      hardModeHelp.style.display = (currentClef === 'hardMode') ? 'block' : 'none';
+    }
   }
   
   // Update hand score visibility when clef changes
@@ -2095,16 +2107,11 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
           return; // Skip notes from other clefs in hard mode
         }
       }
-      // In hard mode without target clef (keyboard input), find closest note regardless of clef
+      // In hard mode without target clef (keyboard input), disable non-targeted input
       else if (pianoModeActive && pianoModeSettings.hardMode && !targetClef) {
-        // Allow keyboard input to match the closest note from either clef
-        const distance = note.x;
-        if (distance < minDistance) {
-          minDistance = distance;
-          leftmostNote = note;
-          leftmostIndex = index;
-        }
-        return; // Continue to next note
+        // Skip non-targeted keyboard/button input in hard mode to prevent clef confusion
+        // User must use Shift+key for treble or Ctrl+key for bass clef targeting
+        return; // Skip all notes for non-targeted keyboard input in hard mode
       }
       // In piano mode, check if this note belongs to an active hand
       else if (pianoModeActive && isDualClefMode()) {
@@ -2694,7 +2701,22 @@ document.addEventListener('keydown', function(e) {
   // Check if it's a letter A-G (case insensitive)
   const key = e.key.toUpperCase();
   if (key.match(/^[A-G]$/)) {
-    handleNoteInput(key);
+    // In hard mode, allow modifier keys to specify target clef
+    if (pianoModeActive && pianoModeSettings.hardMode) {
+      let targetClef = null;
+      if (e.shiftKey) {
+        targetClef = 'treble'; // Shift + letter for treble clef
+      } else if (e.ctrlKey || e.altKey) {
+        targetClef = 'bass';   // Ctrl/Alt + letter for bass clef  
+      }
+      // If no modifier keys, don't process input (user must be explicit)
+      if (targetClef) {
+        handleNoteInputWithOctave(key, null, targetClef);
+      }
+    } else {
+      // Normal mode - use regular input handling
+      handleNoteInput(key);
+    }
   }
 });
 
@@ -2791,9 +2813,25 @@ window.onload = function () {
   
   // Add click event listeners for pitch buttons
   document.querySelectorAll('.pitch-btn').forEach(button => {
-    button.addEventListener('click', function() {
+    button.addEventListener('click', function(e) {
       const note = this.dataset.note;
-      handleNoteInput(note);
+      
+      // In hard mode, check for modifier keys to specify target clef
+      if (pianoModeActive && pianoModeSettings.hardMode) {
+        let targetClef = null;
+        if (e.shiftKey) {
+          targetClef = 'treble'; // Shift + click for treble clef
+        } else if (e.ctrlKey || e.altKey) {
+          targetClef = 'bass';   // Ctrl/Alt + click for bass clef
+        }
+        // If no modifier keys in hard mode, don't process input (user must be explicit)
+        if (targetClef) {
+          handleNoteInputWithOctave(note, null, targetClef);
+        }
+      } else {
+        // Normal mode - use regular input handling
+        handleNoteInput(note);
+      }
       
       // Visual feedback on button press - blue to white to blue
       this.style.background = '#fff';
