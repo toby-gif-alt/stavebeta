@@ -276,9 +276,7 @@ let gameSettings = {
 
 // Piano Mode integration
 let pianoModeActive = false;
-let pianoModeSettings = {
-  hardMode: false  // Add hardMode to default settings
-};
+let pianoModeSettings = {};
 
 // Chord completion tracking for Piano Mode with grace period
 let chordProgress = new Map(); // chordId -> { pressedNotes: Set, timestamps: Map, firstPressTime: number }
@@ -2160,7 +2158,6 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef = null
       if (pianoModeActive && currentClef === 'grand') {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
-        const hardMode = pianoModeSettings.hardMode;
         
         // If we have a targetClef from MIDI input, only consider notes from that clef
         if (targetClef) {
@@ -2179,13 +2176,6 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef = null
           }
         } else {
           // For keyboard/button input, consider all notes from active hands
-          // In hard mode, if both hands are active, we need to be more restrictive
-          if (hardMode && leftHandActive && rightHandActive) {
-            // In hard mode with both hands active, keyboard input is disabled
-            // to prevent cross-clef interference - only MIDI input with targetClef works
-            return;
-          }
-          
           const noteIsFromActiveHand = 
             (note.clef === 'bass' && leftHandActive) || 
             (note.clef === 'treble' && rightHandActive);

@@ -25,7 +25,6 @@ export interface PianoModeSettings {
     isActive: boolean;
     chordMode: boolean;
     forceGrandStaff: boolean;
-    hardMode?: boolean;
     leftHand?: 'none' | 'melody' | 'chords';
     rightHand?: 'none' | 'melody' | 'chords';
 }
