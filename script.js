@@ -2433,12 +2433,11 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
     
   } else {
     // Wrong answer - no matching note found
-    // For piano mode chord mode, find the leftmost chord to destroy
-    let leftmostChordToDestroy = null;
-    let leftmostChordIndex = -1;
-    let minChordDistance = Infinity;
+    // Find the leftmost note to destroy (regardless of whether it matches user input)
+    let leftmostNoteToDestroy = null;
+    let minNoteDistance = Infinity;
     
-    // Find the leftmost chord respecting hand boundaries in piano mode
+    // Find the leftmost note respecting hand boundaries in piano mode
     movingNotes.forEach((note, index) => {
       // In piano mode, check if this note belongs to an active hand
       if (pianoModeActive && currentClef === 'grand') {
@@ -2453,53 +2452,21 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         if (!noteIsFromActiveHand) {
           return; // Skip notes from inactive hands
         }
-        
-        // For piano mode with chord modes, check if this is a chord in an active chord mode
-        if ((note.clef === 'bass' && pianoModeSettings.leftHand === 'chords') ||
-            (note.clef === 'treble' && pianoModeSettings.rightHand === 'chords')) {
-          if (note.isChord && note.x < minChordDistance) {
-            minChordDistance = note.x;
-            leftmostChordToDestroy = note;
-            leftmostChordIndex = index;
-          }
-        }
-      } else {
-        // Regular mode - find leftmost chord
-        if (note.isChord && note.x < minChordDistance) {
-          minChordDistance = note.x;
-          leftmostChordToDestroy = note;
-          leftmostChordIndex = index;
-        }
+      }
+      
+      // Find the leftmost note regardless of type (chord or single)
+      if (note.x < minNoteDistance) {
+        minNoteDistance = note.x;
+        leftmostNoteToDestroy = note;
       }
     });
     
-    // If we found a chord to destroy, destroy it
-    if (leftmostChordToDestroy && leftmostChordToDestroy.isChord) {
-      const chordId = leftmostChordToDestroy.chordId;
-      const affectedClef = leftmostChordToDestroy.clef;
-      
-      // Remove all notes in this chord
-      for (let i = movingNotes.length - 1; i >= 0; i--) {
-        if (movingNotes[i].isChord && movingNotes[i].chordId === chordId) {
-          movingNotes.splice(i, 1);
-        }
-      }
-      
-      // Reset chord progress for this chord
-      chordProgress.delete(chordId);
-      
-      // Spawn next note immediately for single-note flow
-      forceSpawnNote();
-      
-      feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
-      feedback.style.color = '#d0021b';
-      feedback.style.fontSize = '16px';
-    } else if (leftmostNote) {
-      // Fall back to original logic for single notes
-      if (leftmostNote.isChord) {
-        // For chords: instantly delete the entire chord for the affected hand/clef and reset progress
-        const chordId = leftmostNote.chordId;
-        const affectedClef = leftmostNote.clef;
+    // Destroy the leftmost note if found
+    if (leftmostNoteToDestroy) {
+      if (leftmostNoteToDestroy.isChord) {
+        // For chords: destroy the entire chord
+        const chordId = leftmostNoteToDestroy.chordId;
+        const affectedClef = leftmostNoteToDestroy.clef;
         
         // Remove all notes in this chord
         for (let i = movingNotes.length - 1; i >= 0; i--) {
@@ -2511,26 +2478,23 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         // Reset chord progress for this chord
         chordProgress.delete(chordId);
         
-        // Spawn next note immediately for single-note flow
-        forceSpawnNote();
-        
         feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       } else {
-        // Single note - destroy immediately and spawn new one (same behavior as chords)
-        const noteIndex = movingNotes.indexOf(leftmostNote);
+        // Single note - destroy immediately
+        const noteIndex = movingNotes.indexOf(leftmostNoteToDestroy);
         if (noteIndex !== -1) {
           movingNotes.splice(noteIndex, 1);
-          
-          // Spawn next note immediately for single-note flow
-          forceSpawnNote();
         }
         
-        feedback.textContent = `Wrong note! Note deleted.`;
+        feedback.textContent = `Wrong note! Note deleted. The note was ${leftmostNoteToDestroy.note}`;
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       }
+      
+      // Spawn next note immediately after destruction
+      forceSpawnNote();
     }
     
     lives--;
