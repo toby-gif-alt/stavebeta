@@ -2555,14 +2555,20 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
       }
     }
     
-    // Find the leftmost note to destroy (regardless of whether it matches user input)
+    // Find the leftmost note to destroy (respecting clef boundaries in hard mode)
     let leftmostNoteToDestroy = null;
     let minNoteDistance = Infinity;
     
     // Find the leftmost note respecting hand boundaries in piano mode
     movingNotes.forEach((note, index) => {
+      // In hard mode with target clef specified, only consider notes from that specific clef
+      if (pianoModeActive && pianoModeSettings.hardMode && targetClef) {
+        if (note.clef !== targetClef) {
+          return; // Skip notes from other clefs in hard mode
+        }
+      }
       // In piano mode, check if this note belongs to an active hand
-      if (pianoModeActive && isDualClefMode()) {
+      else if (pianoModeActive && isDualClefMode()) {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
         const rightHandActive = pianoModeSettings.rightHand !== 'none';
         
