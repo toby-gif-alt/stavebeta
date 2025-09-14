@@ -16,7 +16,9 @@ const BRAVURA_SYMBOLS = {
   noteheadBlack: '\uE0A4', // Black note head (quarter note)
   noteheadWhole: '\uE0A2', // Whole note head (semibreve)
   staff5Lines: '\uE014',   // Five-line staff
-  ledgerLine: '\uE022'     // Ledger line
+  ledgerLine: '\uE022',    // Ledger line
+  accidentalSharp: '\uE262',  // Sharp accidental
+  accidentalFlat: '\uE260'    // Flat accidental
 };
 
 // Helper function to draw text with Bravura font
@@ -40,6 +42,136 @@ function drawTrebleClef(ctx, x, y, scale = 1) {
 function drawBassClef(ctx, x, y, scale = 1) {
   const size = 60 * scale; // Reduced size to match treble clef proportion
   drawBravuraText(ctx, BRAVURA_SYMBOLS.fClef, x, y, size, '#FFFFFF'); // White color
+}
+
+/**
+ * Get current key signature for display
+ * @returns {string} Key signature code (e.g., 'G', 'D', 'F', etc.)
+ */
+function getCurrentKeySignature() {
+  // Check MIDI Piano Mode settings first
+  if (window.getPianoModeSettings && typeof window.getPianoModeSettings === 'function') {
+    const midiSettings = window.getPianoModeSettings();
+    if (midiSettings && midiSettings.isActive && midiSettings.keySignature) {
+      return midiSettings.keySignature;
+    }
+  }
+  
+  // Fallback to game settings
+  if (pianoModeActive && pianoModeSettings.keySignature) {
+    return pianoModeSettings.keySignature;
+  }
+  
+  return 'C'; // Default to C major
+}
+
+/**
+ * Get key signature information for display
+ * @param {string} keySignature Key signature code
+ * @returns {Object} Key signature info with sharps and flats arrays
+ */
+function getKeySignatureInfo(keySignature) {
+  const keySignatures = {
+    'C': { name: 'C Major', sharps: [], flats: [], accidentalCount: 0 },
+    'G': { name: 'G Major', sharps: ['F'], flats: [], accidentalCount: 1 },
+    'D': { name: 'D Major', sharps: ['F', 'C'], flats: [], accidentalCount: 2 },
+    'A': { name: 'A Major', sharps: ['F', 'C', 'G'], flats: [], accidentalCount: 3 },
+    'E': { name: 'E Major', sharps: ['F', 'C', 'G', 'D'], flats: [], accidentalCount: 4 },
+    'B': { name: 'B Major', sharps: ['F', 'C', 'G', 'D', 'A'], flats: [], accidentalCount: 5 },
+    'F#': { name: 'F♯ Major', sharps: ['F', 'C', 'G', 'D', 'A', 'E'], flats: [], accidentalCount: 6 },
+    'Gb': { name: 'G♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D', 'G', 'C'], accidentalCount: 6 },
+    'Db': { name: 'D♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D', 'G'], accidentalCount: 5 },
+    'Ab': { name: 'A♭ Major', sharps: [], flats: ['B', 'E', 'A', 'D'], accidentalCount: 4 },
+    'Eb': { name: 'E♭ Major', sharps: [], flats: ['B', 'E', 'A'], accidentalCount: 3 },
+    'Bb': { name: 'B♭ Major', sharps: [], flats: ['B', 'E'], accidentalCount: 2 },
+    'F': { name: 'F Major', sharps: [], flats: ['B'], accidentalCount: 1 }
+  };
+  return keySignatures[keySignature] || keySignatures['C'];
+}
+
+/**
+ * Draw key signature accidentals after the clef
+ * @param {CanvasRenderingContext2D} ctx Canvas context
+ * @param {string} clef Clef type ('treble' or 'bass')
+ * @param {number} startX X position to start drawing accidentals
+ * @param {number} staffY Y position of the staff
+ * @param {string} keySignature Key signature code
+ */
+function drawKeySignature(ctx, clef, startX, staffY, keySignature) {
+  const keyInfo = getKeySignatureInfo(keySignature);
+  
+  if (keyInfo.accidentalCount === 0) {
+    return startX; // No accidentals to draw for C major
+  }
+  
+  const spacing = 12; // Horizontal spacing between accidentals
+  const accidentalSize = 24; // Size of accidental symbols
+  let currentX = startX;
+  
+  // Define the order and positions for sharps and flats on each clef
+  const sharpPositions = {
+    treble: {
+      'F': staffY + 56, // F5 line position
+      'C': staffY + 40, // C5 space position  
+      'G': staffY + 64, // G5 space position
+      'D': staffY + 48, // D5 line position
+      'A': staffY + 32, // A5 space position
+      'E': staffY + 56  // E5 line position
+    },
+    bass: {
+      'F': staffY + 8,  // F3 space position
+      'C': staffY + 24, // C3 line position
+      'G': staffY + 0,  // G3 space position  
+      'D': staffY + 16, // D3 line position
+      'A': staffY + 32, // A3 space position
+      'E': staffY + 8   // E3 space position
+    }
+  };
+  
+  const flatPositions = {
+    treble: {
+      'B': staffY + 48, // B4 line position
+      'E': staffY + 64, // E5 space position
+      'A': staffY + 32, // A5 space position
+      'D': staffY + 56, // D5 line position
+      'G': staffY + 24, // G4 line position
+      'C': staffY + 40  // C5 space position
+    },
+    bass: {
+      'B': staffY + 16, // B2 line position
+      'E': staffY + 0,  // E3 space position
+      'A': staffY + 24, // A2 line position
+      'D': staffY + 8,  // D3 space position
+      'G': staffY + 32, // G2 space position
+      'C': staffY + 16  // C3 line position
+    }
+  };
+  
+  // Draw sharps
+  if (keyInfo.sharps.length > 0) {
+    const positions = sharpPositions[clef] || sharpPositions.treble;
+    keyInfo.sharps.forEach((note) => {
+      const y = positions[note];
+      if (y !== undefined) {
+        drawBravuraText(ctx, BRAVURA_SYMBOLS.accidentalSharp, currentX, y, accidentalSize, '#FFFFFF');
+        currentX += spacing;
+      }
+    });
+  }
+  
+  // Draw flats
+  if (keyInfo.flats.length > 0) {
+    const positions = flatPositions[clef] || flatPositions.treble;
+    keyInfo.flats.forEach((note) => {
+      const y = positions[note];
+      if (y !== undefined) {
+        drawBravuraText(ctx, BRAVURA_SYMBOLS.accidentalFlat, currentX, y, accidentalSize, '#FFFFFF');
+        currentX += spacing;
+      }
+    });
+  }
+  
+  return currentX; // Return the X position after drawing all accidentals
 }
 
 
@@ -83,6 +215,16 @@ function createStaff(clef, x, y, width) {
     drawBassClef(ctx, clefX, clefY, 1.0); // Standard scale for Bravura
   }
   
+  // Draw key signature after the clef (only in Piano Mode)
+  let keySignatureEndX = clefX + 40; // Default end position after clef
+  if (pianoModeActive) {
+    const keySignature = getCurrentKeySignature();
+    if (keySignature && keySignature !== 'C') {
+      const keySignatureStartX = clefX + 40; // Start key signature after clef
+      keySignatureEndX = drawKeySignature(ctx, clef, keySignatureStartX, y, keySignature);
+    }
+  }
+  
   return {
     clef: clef,
     x: x,
@@ -90,7 +232,8 @@ function createStaff(clef, x, y, width) {
     width: width,
     staffLines: staffLines,
     clefX: clefX,
-    clefY: clefY
+    clefY: clefY,
+    keySignatureEndX: keySignatureEndX // Track where key signature ends for note positioning
   };
 }
 
