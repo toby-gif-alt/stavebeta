@@ -353,6 +353,11 @@ function loadGameSettings() {
     currentClef = settings.clef || 'treble';
     maxLedgerLines = settings.ledgerLines !== undefined ? settings.ledgerLines : 4;
     
+    // Validate hardMode clef: only allow hardMode if Piano Mode is enabled and active
+    if (currentClef === 'hardMode' && !gameSettings.pianoMode.enabled) {
+      currentClef = 'treble'; // Reset to default if hardMode without Piano Mode
+    }
+    
     // Load Piano Mode settings
     pianoModeActive = gameSettings.pianoMode.enabled;
     pianoModeSettings = { ...gameSettings.pianoMode };
