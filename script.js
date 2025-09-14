@@ -281,6 +281,13 @@ let pianoModeSettings = {};
 // Chord completion tracking for Piano Mode with grace period
 let chordProgress = new Map(); // chordId -> { pressedNotes: Set, timestamps: Map, firstPressTime: number }
 
+// Chord mode wrong note forgiveness tracking
+let chordWrongNoteWindow = {
+  lastWrongNoteTime: 0,
+  windowDuration: 150, // 150ms forgiveness window
+  hasCountedError: false // Track if we already counted an error in this window
+};
+
 // Clean up stale chord progress entries to prevent input registration failures
 // FIXED: Now called immediately on every input event instead of being throttled
 function cleanupStaleChordProgress() {
@@ -1383,6 +1390,17 @@ function forceSpawnNote() {
   spawnNote();
 }
 
+// Force spawn with delay for chord mode
+function forceSpawnNoteWithDelay(delayMs = 0) {
+  if (delayMs > 0) {
+    setTimeout(() => {
+      forceSpawnNote();
+    }, delayMs);
+  } else {
+    forceSpawnNote();
+  }
+}
+
 // Spawn a replacement note when one is destroyed (wrong answer or collision)
 function respawnNote() {
   // Check if there's enough space to spawn a new note without overlap
@@ -2168,8 +2186,8 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         // Clean up chord progress tracking
         chordProgress.delete(chordId);
         
-        // Spawn next note immediately for single-note flow
-        forceSpawnNote();
+        // Spawn next note with 150ms delay for chord mode to give user time
+        forceSpawnNoteWithDelay(150);
         
         feedback.textContent = `Chord Complete! +1 point!`;
         feedback.style.color = '#00ff00';
@@ -2358,6 +2376,34 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
     
   } else {
     // Wrong answer - no matching note found
+    
+    // Check for chord mode forgiveness window
+    const currentTime = Date.now();
+    let shouldCountError = true;
+    let isChordError = false;
+    
+    // Check if we're in a chord and within the forgiveness window
+    if (movingNotes.some(note => note.isChord)) {
+      isChordError = true;
+      
+      // Check if we're within the 150ms forgiveness window
+      if (currentTime - chordWrongNoteWindow.lastWrongNoteTime < chordWrongNoteWindow.windowDuration) {
+        // Within window - don't count as additional error if we already counted one
+        if (chordWrongNoteWindow.hasCountedError) {
+          shouldCountError = false;
+        }
+      } else {
+        // Outside window or first error - reset tracking
+        chordWrongNoteWindow.hasCountedError = false;
+      }
+      
+      // Update tracking
+      chordWrongNoteWindow.lastWrongNoteTime = currentTime;
+      if (shouldCountError) {
+        chordWrongNoteWindow.hasCountedError = true;
+      }
+    }
+    
     // Find the leftmost note to destroy (regardless of whether it matches user input)
     let leftmostNoteToDestroy = null;
     let minNoteDistance = Infinity;
@@ -2403,7 +2449,12 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         // Reset chord progress for this chord
         chordProgress.delete(chordId);
         
-        feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
+        // Update feedback based on forgiveness
+        if (shouldCountError) {
+          feedback.textContent = `Wrong note! Chord deleted for ${affectedClef} clef.`;
+        } else {
+          feedback.textContent = `Wrong note in chord (still learning)`;
+        }
         feedback.style.color = '#d0021b';
         feedback.style.fontSize = '16px';
       } else {
@@ -2418,14 +2469,21 @@ async function handleNoteInputWithOctave(userNote, userOctave) {
         feedback.style.fontSize = '16px';
       }
       
-      // Spawn next note immediately after destruction
-      forceSpawnNote();
+      // Spawn next note with delay for chord mode, immediately for single notes
+      if (isChordError) {
+        forceSpawnNoteWithDelay(150);
+      } else {
+        forceSpawnNote();
+      }
     }
     
-    lives--;
-    
-    // Add light shake effect for wrong answer
-    triggerShake(3, 200); // Light intensity, short duration
+    // Only decrement lives if we should count this error
+    if (shouldCountError) {
+      lives--;
+      
+      // Add light shake effect for wrong answer
+      triggerShake(3, 200); // Light intensity, short duration
+    }
     
     // Add randomized explosion at appropriate clef position
     let clefX = 35; // Default fallback  
