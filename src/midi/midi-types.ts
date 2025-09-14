@@ -29,7 +29,6 @@ export interface PianoModeSettings {
   isActive: boolean;
   chordMode: boolean;      // Allow multiple simultaneous notes
   forceGrandStaff: boolean;    // Always show grand staff when active
-  hardMode?: boolean;      // Independent clef operation mode  
   leftHand?: 'none' | 'melody' | 'chords';   // Left hand mode (bass clef)
   rightHand?: 'none' | 'melody' | 'chords';  // Right hand mode (treble clef)
 }
