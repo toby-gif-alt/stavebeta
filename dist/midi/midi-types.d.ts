@@ -17,6 +17,7 @@ export interface MidiNote {
 }
 export interface MidiNoteMapping {
     midiNote: number;
+    originalMidiNote?: number;
     noteName: string;
     octave: number;
     scientific: string;

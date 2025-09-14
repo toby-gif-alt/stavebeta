@@ -20,6 +20,7 @@ export interface MidiNote {
 
 export interface MidiNoteMapping {
   midiNote: number;
+  originalMidiNote?: number;  // Original MIDI note before conversion to natural note
   noteName: string;    // A, B, C, D, E, F, G
   octave: number;      // Octave number
   scientific: string;  // Scientific notation (e.g., "C4")
