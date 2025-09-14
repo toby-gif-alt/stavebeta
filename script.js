@@ -2095,6 +2095,17 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
           return; // Skip notes from other clefs in hard mode
         }
       }
+      // In hard mode without target clef (keyboard input), find closest note regardless of clef
+      else if (pianoModeActive && pianoModeSettings.hardMode && !targetClef) {
+        // Allow keyboard input to match the closest note from either clef
+        const distance = note.x;
+        if (distance < minDistance) {
+          minDistance = distance;
+          leftmostNote = note;
+          leftmostIndex = index;
+        }
+        return; // Continue to next note
+      }
       // In piano mode, check if this note belongs to an active hand
       else if (pianoModeActive && isDualClefMode()) {
         const leftHandActive = pianoModeSettings.leftHand !== 'none';
