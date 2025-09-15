@@ -12,7 +12,6 @@ declare global {
         getPianoModeSettings: () => PianoModeSettings;
         reinitializeMidiAfterRestart: () => void;
         updateMidiPianoModeSettings: (settings: Partial<PianoModeSettings>) => void;
-        handleLevelChange: (newLevel: number) => void;
     }
 }
 import { MidiDevice, MidiConnectionStatus, PianoModeSettings } from './midi-types.js';
@@ -50,9 +49,3 @@ export declare function getPianoModeSettings(): PianoModeSettings;
  * Update Piano Mode settings
  */
 export declare function updatePianoModeSettings(settings: Partial<PianoModeSettings>): void;
-/**
- * Handle level progression and automatic key signature changes
- * Call this function when the game level changes
- * @param newLevel The new level number
- */
-export declare function handleLevelChange(newLevel: number): void;
