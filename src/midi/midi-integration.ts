@@ -389,12 +389,6 @@ export function updatePianoModeSettings(settings: Partial<PianoModeSettings>): v
   if ('forceGrandStaff' in settings) {
     updatedSettings.forceGrandStaff = settings.forceGrandStaff;
   }
-  if ('keySignature' in settings) {
-    updatedSettings.keySignature = settings.keySignature;
-  }
-  if ('changeKeys' in settings) {
-    updatedSettings.changeKeys = settings.changeKeys;
-  }
   
   pianoModeSettings = { ...pianoModeSettings, ...updatedSettings };
   updatePianoModeUI();
@@ -424,9 +418,7 @@ function initializePianoModeUI(): void {
           forceGrandStaff: true,  // Keep existing default
           leftHand: menuSettings.leftHand || 'none',
           rightHand: menuSettings.rightHand || 'none',
-          hardMode: menuSettings.hardMode || false,
-          keySignature: menuSettings.keySignature || 'C',
-          changeKeys: menuSettings.changeKeys || false
+          hardMode: menuSettings.hardMode || false
         };
         console.log('Loaded Piano Mode settings from menu:', pianoModeSettings);
       }
