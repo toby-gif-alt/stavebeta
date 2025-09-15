@@ -44,25 +44,7 @@ function drawBassClef(ctx, x, y, scale = 1) {
   drawBravuraText(ctx, BRAVURA_SYMBOLS.fClef, x, y, size, '#FFFFFF'); // White color
 }
 
-/**
- * Get level-based key signature for display
- * @returns {string} Key signature code based on current level
- */
-function getLevelKeySignature() {
-  // Level-based key progression for normal gameplay - test multiple key signatures
-  if (level >= 6) {
-    return 'F'; // Level 6+ uses F Major (1 flat)
-  } else if (level >= 5) {
-    return 'Bb'; // Level 5 uses Bb Major (2 flats)
-  } else if (level >= 4) {
-    return 'A'; // Level 4 uses A Major (3 sharps)
-  } else if (level >= 3) {
-    return 'G'; // Level 3 uses G Major (1 sharp)
-  } else if (level >= 2) {
-    return 'D'; // Level 2 uses D Major (2 sharps)
-  }
-  return 'C'; // Level 1 uses C Major (no accidentals)
-}
+
 /**
  * Get current key signature for display
  * @returns {string} Key signature code (e.g., 'G', 'D', 'F', etc.)
@@ -81,8 +63,7 @@ function getCurrentKeySignature() {
     return pianoModeSettings.keySignature;
   }
   
-  // For normal gameplay, use level-based key signatures
-  return getLevelKeySignature();
+  return 'C'; // Default to C major
 }
 
 /**
@@ -237,12 +218,14 @@ function createStaff(clef, x, y, width) {
     drawBassClef(ctx, clefX, clefY, 1.0); // Standard scale for Bravura
   }
   
-  // Draw key signature after the clef for all gameplay modes
+  // Draw key signature after the clef (only in Piano Mode)
   let keySignatureEndX = clefX + 40; // Default end position after clef
-  const keySignature = getCurrentKeySignature();
-  if (keySignature && keySignature !== 'C') {
-    const keySignatureStartX = clefX + 40; // Start key signature after clef
-    keySignatureEndX = drawKeySignature(ctx, clef, keySignatureStartX, y, keySignature);
+  if (pianoModeActive) {
+    const keySignature = getCurrentKeySignature();
+    if (keySignature && keySignature !== 'C') {
+      const keySignatureStartX = clefX + 40; // Start key signature after clef
+      keySignatureEndX = drawKeySignature(ctx, clef, keySignatureStartX, y, keySignature);
+    }
   }
   
   return {
