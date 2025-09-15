@@ -49,9 +49,17 @@ function drawBassClef(ctx, x, y, scale = 1) {
  * @returns {string} Key signature code based on current level
  */
 function getLevelKeySignature() {
-  // Level-based key progression for normal gameplay
-  if (level >= 2) {
-    return 'D'; // Level 2+ uses D Major (2 sharps)
+  // Level-based key progression for normal gameplay - test multiple key signatures
+  if (level >= 6) {
+    return 'F'; // Level 6+ uses F Major (1 flat)
+  } else if (level >= 5) {
+    return 'Bb'; // Level 5 uses Bb Major (2 flats)
+  } else if (level >= 4) {
+    return 'A'; // Level 4 uses A Major (3 sharps)
+  } else if (level >= 3) {
+    return 'G'; // Level 3 uses G Major (1 sharp)
+  } else if (level >= 2) {
+    return 'D'; // Level 2 uses D Major (2 sharps)
   }
   return 'C'; // Level 1 uses C Major (no accidentals)
 }
