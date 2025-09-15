@@ -13,6 +13,7 @@ declare global {
         reinitializeMidiAfterRestart: () => void;
         updateMidiPianoModeSettings: (settings: Partial<PianoModeSettings>) => void;
         handleLevelChange: (newLevel: number) => void;
+        getCurrentKeySignature: () => string;
     }
 }
 import { MidiDevice, MidiConnectionStatus, PianoModeSettings } from './midi-types.js';

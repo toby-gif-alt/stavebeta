@@ -44,6 +44,7 @@ function drawBassClef(ctx, x, y, scale = 1) {
   drawBravuraText(ctx, BRAVURA_SYMBOLS.fClef, x, y, size, '#FFFFFF'); // White color
 }
 
+
 /**
  * Get current key signature for display
  * @returns {string} Key signature code (e.g., 'G', 'D', 'F', etc.)
@@ -104,46 +105,48 @@ function drawKeySignature(ctx, clef, startX, staffY, keySignature) {
     return startX; // No accidentals to draw for C major
   }
   
-  const spacing = 12; // Horizontal spacing between accidentals
-  const accidentalSize = 24; // Size of accidental symbols
+  const spacing = 15; // Horizontal spacing between accidentals  
+  const accidentalSize = 32; // Size of accidental symbols - made bigger for better visibility
   let currentX = startX;
   
   // Define the order and positions for sharps and flats on each clef
+  // Standard music notation positions - sharps go F#, C#, G#, D#, A#, E#
   const sharpPositions = {
     treble: {
-      'F': staffY + 56, // F5 line position
-      'C': staffY + 40, // C5 space position  
-      'G': staffY + 64, // G5 space position
-      'D': staffY + 48, // D5 line position
-      'A': staffY + 32, // A5 space position
-      'E': staffY + 56  // E5 line position
+      'F': staffY + 56, // F5 - top line
+      'C': staffY + 40, // C5 - third space
+      'G': staffY + 64, // G5 - above staff
+      'D': staffY + 48, // D5 - fourth line  
+      'A': staffY + 32, // A5 - second space
+      'E': staffY + 56  // E5 - top line (same as F)
     },
     bass: {
-      'F': staffY + 8,  // F3 space position
-      'C': staffY + 24, // C3 line position
-      'G': staffY + 0,  // G3 space position  
-      'D': staffY + 16, // D3 line position
-      'A': staffY + 32, // A3 space position
-      'E': staffY + 8   // E3 space position
+      'F': staffY + 8,  // F3 - second space
+      'C': staffY + 24, // C3 - third line
+      'G': staffY + 0,  // G3 - top space  
+      'D': staffY + 16, // D3 - fourth line
+      'A': staffY + 32, // A3 - bottom space
+      'E': staffY + 8   // E3 - second space (same as F)
     }
   };
   
+  // Standard music notation positions - flats go B♭, E♭, A♭, D♭, G♭, C♭
   const flatPositions = {
     treble: {
-      'B': staffY + 48, // B4 line position
-      'E': staffY + 64, // E5 space position
-      'A': staffY + 32, // A5 space position
-      'D': staffY + 56, // D5 line position
-      'G': staffY + 24, // G4 line position
-      'C': staffY + 40  // C5 space position
+      'B': staffY + 48, // B4 - fourth line
+      'E': staffY + 64, // E5 - above staff
+      'A': staffY + 32, // A5 - second space
+      'D': staffY + 56, // D5 - top line
+      'G': staffY + 24, // G4 - second line
+      'C': staffY + 40  // C5 - third space
     },
     bass: {
-      'B': staffY + 16, // B2 line position
-      'E': staffY + 0,  // E3 space position
-      'A': staffY + 24, // A2 line position
-      'D': staffY + 8,  // D3 space position
-      'G': staffY + 32, // G2 space position
-      'C': staffY + 16  // C3 line position
+      'B': staffY + 16, // B2 - fourth line
+      'E': staffY + 0,  // E3 - top space
+      'A': staffY + 24, // A2 - third line
+      'D': staffY + 8,  // D3 - second space
+      'G': staffY + 32, // G2 - bottom space
+      'C': staffY + 16  // C3 - fourth line (same as B)
     }
   };
   
@@ -617,7 +620,14 @@ let activeMusicTracks = [];
 function showLevelPopup(levelNumber) {
   const levelPopup = document.getElementById('levelPopup');
   if (levelPopup) {
-    levelPopup.textContent = `Level ${levelNumber}!`;
+    let popupText = `Level ${levelNumber}!`;
+    
+    // Special case for level 2 - show key change to D major
+    if (levelNumber === 2) {
+      popupText = `Level 2 - Key Change to D major`;
+    }
+    
+    levelPopup.textContent = popupText;
     levelPopup.style.display = 'block';
     
     // Hide the popup after animation completes (3 seconds)
@@ -924,7 +934,7 @@ function triggerShake(intensity, duration) {
   shakeEffect.duration = duration;
 }
 
-// Draw fluctuating green line to the right of clef (collision line)
+// Draw fluctuating green line to the right of accidentals (collision line)
 function drawFluctuatingLine() {
   // Update the fluctuating line phase
   fluctuatingLine.phase += 0.1;
@@ -932,16 +942,20 @@ function drawFluctuatingLine() {
   // Calculate line length fluctuation using sine wave
   const lengthFluctuation = Math.sin(fluctuatingLine.phase) * fluctuatingLine.amplitude;
   
-  // Position line to the right of the clef (collision point) with more spacing
-  const collisionX = (currentTrebleStave ? currentTrebleStave.clefX : currentBassStave ? currentBassStave.clefX : 65) + 35; // 35px buffer from clef for better visual separation
-  
   if (currentTrebleStave && currentBassStave) {
     // Grand staff - draw green lines for both treble and bass staves
-    drawStaffGreenLine(collisionX, currentTrebleStave, lengthFluctuation);
-    drawStaffGreenLine(collisionX, currentBassStave, lengthFluctuation);
+    // Position after key signature accidentals with buffer
+    const trebleCollisionX = currentTrebleStave.keySignatureEndX + 20;
+    const bassCollisionX = currentBassStave.keySignatureEndX + 20;
+    drawStaffGreenLine(trebleCollisionX, currentTrebleStave, lengthFluctuation);
+    drawStaffGreenLine(bassCollisionX, currentBassStave, lengthFluctuation);
   } else if (currentTrebleStave) {
+    // Position after key signature accidentals with buffer
+    const collisionX = currentTrebleStave.keySignatureEndX + 20;
     drawStaffGreenLine(collisionX, currentTrebleStave, lengthFluctuation);
   } else if (currentBassStave) {
+    // Position after key signature accidentals with buffer  
+    const collisionX = currentBassStave.keySignatureEndX + 20;
     drawStaffGreenLine(collisionX, currentBassStave, lengthFluctuation);
   }
 }
@@ -1671,6 +1685,9 @@ function respawnNote() {
 
 // Update moving notes
 function updateMovingNotes() {
+  // Track which chords have already triggered a life loss in this update cycle
+  const chordsProcessedForLifeLoss = new Set();
+  
   movingNotes.forEach((note, index) => {
     note.x -= note.speed;
     
@@ -1681,13 +1698,13 @@ function updateMovingNotes() {
     // Get dynamic staff position based on current staff and note clef
     if (isDualClefMode()) {
       if (note.clef === 'treble' && currentTrebleStave) {
-        greenLineCollisionX = currentTrebleStave.clefX + 35; // Green line position
+        greenLineCollisionX = currentTrebleStave.keySignatureEndX + 20; // Green line position after accidentals
         staffClef = currentTrebleStave;
         clefX = currentTrebleStave.clefX;
         clefY = currentTrebleStave.clefY;
         staffBottomY = currentTrebleStave.y + 64; // Bottom of treble staff
       } else if (note.clef === 'bass' && currentBassStave) {
-        greenLineCollisionX = currentBassStave.clefX + 35; // Green line position
+        greenLineCollisionX = currentBassStave.keySignatureEndX + 20; // Green line position after accidentals
         staffClef = currentBassStave;
         clefX = currentBassStave.clefX;
         clefY = currentBassStave.clefY;
@@ -1695,13 +1712,13 @@ function updateMovingNotes() {
       }
     } else {
       if (currentClef === 'treble' && currentTrebleStave) {
-        greenLineCollisionX = currentTrebleStave.clefX + 35; // Green line position
+        greenLineCollisionX = currentTrebleStave.keySignatureEndX + 20; // Green line position after accidentals
         staffClef = currentTrebleStave;
         clefX = currentTrebleStave.clefX;
         clefY = currentTrebleStave.clefY;
         staffBottomY = currentTrebleStave.y + 64; // Bottom of staff
       } else if (currentClef === 'bass' && currentBassStave) {
-        greenLineCollisionX = currentBassStave.clefX + 35; // Green line position
+        greenLineCollisionX = currentBassStave.keySignatureEndX + 20; // Green line position after accidentals
         staffClef = currentBassStave;
         clefX = currentBassStave.clefX;
         clefY = currentBassStave.clefY;
@@ -1712,38 +1729,58 @@ function updateMovingNotes() {
     if (note.x < greenLineCollisionX) {
       // Note hit the green line because player was too slow - lose a life and create explosion
       
-      // Clean up chord progress if this was part of a chord
-      if (note.isChord && chordProgress.has(note.chordId)) {
-        chordProgress.delete(note.chordId);
+      // For chords, only lose one life per chord, not per note
+      let shouldLoseLife = true;
+      if (note.isChord) {
+        if (chordsProcessedForLifeLoss.has(note.chordId)) {
+          shouldLoseLife = false; // This chord already triggered a life loss
+        } else {
+          chordsProcessedForLifeLoss.add(note.chordId); // Mark this chord as processed
+          // Clean up chord progress
+          if (chordProgress.has(note.chordId)) {
+            chordProgress.delete(note.chordId);
+          }
+          // Remove ALL notes in this chord to prevent multiple explosions
+          movingNotes = movingNotes.filter((otherNote, otherIndex) => 
+            !(otherNote.isChord && otherNote.chordId === note.chordId)
+          );
+        }
+      } else {
+        // Single note - remove it
+        movingNotes.splice(index, 1);
       }
       
-      movingNotes.splice(index, 1);
-      
-      // Create explosion at clef position, not at note position
-      let explosionX, explosionY;
-      explosionX = clefX; // Use clef X position for explosion
-      explosionY = clefY; // Use clef Y position for explosion
-      
-      createClefExplosion(explosionX, explosionY, 60, 500);
-      
-      lives--;
-      
-      // Add shake effect - stronger shake for losing a life
-      triggerShake(8, 500); // Medium intensity, half second
-      
-      playSound('explosionLoseLive');
-      updateLifeDisplay();
-      
-      // Show feedback
-      feedback.textContent = `Too slow! The note was ${note.note}`;
-      feedback.style.color = '#d0021b';
-      feedback.style.fontSize = '16px';
-      
-      // Spawn next note with transition delay awareness
-      forceSpawnNoteWithTransitionDelay(note.isChord); // Track if the missed note was a chord
-      
-      if (lives <= 0) {
-        gameOver();
+      if (shouldLoseLife) {
+        // Create explosion at clef position, not at note position
+        let explosionX, explosionY;
+        explosionX = clefX; // Use clef X position for explosion
+        explosionY = clefY; // Use clef Y position for explosion
+        
+        createClefExplosion(explosionX, explosionY, 60, 500);
+        
+        lives--;
+        
+        // Add shake effect - stronger shake for losing a life
+        triggerShake(8, 500); // Medium intensity, half second
+        
+        playSound('explosionLoseLive');
+        updateLifeDisplay();
+        
+        // Show feedback
+        if (note.isChord) {
+          feedback.textContent = `Too slow! The chord was missed`;
+        } else {
+          feedback.textContent = `Too slow! The note was ${note.note}`;
+        }
+        feedback.style.color = '#d0021b';
+        feedback.style.fontSize = '16px';
+        
+        // Spawn next note with transition delay awareness
+        forceSpawnNoteWithTransitionDelay(note.isChord); // Track if the missed note was a chord
+        
+        if (lives <= 0) {
+          gameOver();
+        }
       }
     }
     
@@ -3031,5 +3068,8 @@ window.onload = function () {
   // Make handleNoteInput globally accessible for MIDI integration
   window.handleNoteInput = handleNoteInput;
   window.handleNoteInputWithOctave = handleNoteInputWithOctave;
+  
+  // Make key signature function accessible for MIDI integration
+  window.getCurrentKeySignature = getCurrentKeySignature;
 };
 
