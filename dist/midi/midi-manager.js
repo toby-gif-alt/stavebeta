@@ -328,10 +328,7 @@ export class MidiManager {
     midiNoteToMapping(midiNote) {
         // Get closest natural note for the game (no sharps/flats)
         const naturalMidiNote = getClosestNaturalNote(midiNote);
-        const mapping = midiNoteToMapping(naturalMidiNote);
-        // Include the original MIDI note for key signature validation
-        mapping.originalMidiNote = midiNote;
-        return mapping;
+        return midiNoteToMapping(naturalMidiNote);
     }
     /**
      * Register a callback for MIDI note input

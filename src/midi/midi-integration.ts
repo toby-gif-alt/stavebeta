@@ -73,10 +73,8 @@ function registerMidiNoteHandler(): void {
   midiManager.onNoteInput((noteMapping: MidiNoteMapping) => {
     // Check key signature requirements
     if (pianoModeSettings.isActive && pianoModeSettings.keySignature && pianoModeSettings.keySignature !== 'C') {
-      // Use original MIDI note for key signature validation, fall back to converted note if not available
-      const originalMidiNote = noteMapping.originalMidiNote ?? noteMapping.midiNote;
-      const requiresBlackKey = requiresAccidental(originalMidiNote, pianoModeSettings.keySignature);
-      const isBlackKey = isBlackKeyPressed(originalMidiNote);
+      const requiresBlackKey = requiresAccidental(noteMapping.midiNote, pianoModeSettings.keySignature);
+      const isBlackKey = isBlackKeyPressed(noteMapping.midiNote);
       
       // If key signature requires accidental but natural key is pressed, or vice versa, reject input
       if (requiresBlackKey !== isBlackKey) {
