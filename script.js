@@ -3085,5 +3085,8 @@ window.onload = function () {
   // Make handleNoteInput globally accessible for MIDI integration
   window.handleNoteInput = handleNoteInput;
   window.handleNoteInputWithOctave = handleNoteInputWithOctave;
+  
+  // Make key signature function accessible for MIDI integration
+  window.getCurrentKeySignature = getCurrentKeySignature;
 };
 

@@ -15,6 +15,7 @@ declare global {
     reinitializeMidiAfterRestart: () => void;
     updateMidiPianoModeSettings: (settings: Partial<PianoModeSettings>) => void;
     handleLevelChange: (newLevel: number) => void;
+    getCurrentKeySignature: () => string;
   }
 }
 
@@ -71,16 +72,25 @@ function isBlackKeyPressed(midiNote: number): boolean {
  */
 function registerMidiNoteHandler(): void {
   midiManager.onNoteInput((noteMapping: MidiNoteMapping) => {
-    // Check key signature requirements
-    if (pianoModeSettings.isActive && pianoModeSettings.keySignature && pianoModeSettings.keySignature !== 'C') {
+    // Get current key signature from the game (handles both Piano Mode and level-based keys)
+    let currentKeySignature = 'C'; // default
+    if (typeof window.getCurrentKeySignature === 'function') {
+      currentKeySignature = window.getCurrentKeySignature();
+    } else if (pianoModeSettings.isActive && pianoModeSettings.keySignature) {
+      // Fallback to Piano Mode settings if game function not available
+      currentKeySignature = pianoModeSettings.keySignature;
+    }
+    
+    // Check key signature requirements for both Piano Mode and normal gameplay
+    if (currentKeySignature && currentKeySignature !== 'C') {
       // Use original MIDI note for key signature validation, fall back to converted note if not available
       const originalMidiNote = noteMapping.originalMidiNote ?? noteMapping.midiNote;
-      const requiresBlackKey = requiresAccidental(originalMidiNote, pianoModeSettings.keySignature);
+      const requiresBlackKey = requiresAccidental(originalMidiNote, currentKeySignature);
       const isBlackKey = isBlackKeyPressed(originalMidiNote);
       
       // If key signature requires accidental but natural key is pressed, or vice versa, reject input
       if (requiresBlackKey !== isBlackKey) {
-        console.log(`MIDI input rejected: Key signature ${pianoModeSettings.keySignature} requires ${requiresBlackKey ? 'black' : 'white'} key, but ${isBlackKey ? 'black' : 'white'} key was pressed`);
+        console.log(`MIDI input rejected: Key signature ${currentKeySignature} requires ${requiresBlackKey ? 'black' : 'white'} key, but ${isBlackKey ? 'black' : 'white'} key was pressed`);
         // Could add visual feedback here for incorrect key signature
         return;
       }
