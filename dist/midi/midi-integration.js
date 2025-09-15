@@ -3,7 +3,7 @@
  * Connects the MIDI manager to the existing game input system
  */
 import { midiManager } from './midi-manager.js';
-import { getNaturalNoteForGame, getClefForMidiNote, requiresAccidental, getNextKeySignature, getKeySignatureInfo } from './midi-utils.js';
+import { getNaturalNoteForGame, getClefForMidiNote } from './midi-utils.js';
 // Piano Mode state
 let pianoModeSettings = {
     isActive: false,
@@ -11,9 +11,7 @@ let pianoModeSettings = {
     forceGrandStaff: true,
     leftHand: 'none',
     rightHand: 'none',
-    hardMode: false,
-    keySignature: 'C',
-    changeKeys: false
+    hardMode: false
 };
 /**
  * Reinitialize MIDI connections after game restart
@@ -32,31 +30,10 @@ export function reinitializeMidiAfterRestart() {
     console.log('MIDI reinitialization complete');
 }
 /**
- * Check if a MIDI note number corresponds to a black key
- * @param midiNote MIDI note number
- * @returns True if the note is a black key (sharp/flat)
- */
-function isBlackKeyPressed(midiNote) {
-    const noteIndex = midiNote % 12;
-    // Black keys are at positions 1, 3, 6, 8, 10 (C#, D#, F#, G#, A#)
-    return [1, 3, 6, 8, 10].includes(noteIndex);
-}
-/**
  * Register the MIDI note input handler with proper hard mode logic
  */
 function registerMidiNoteHandler() {
     midiManager.onNoteInput((noteMapping) => {
-        // Check key signature requirements
-        if (pianoModeSettings.isActive && pianoModeSettings.keySignature && pianoModeSettings.keySignature !== 'C') {
-            const requiresBlackKey = requiresAccidental(noteMapping.midiNote, pianoModeSettings.keySignature);
-            const isBlackKey = isBlackKeyPressed(noteMapping.midiNote);
-            // If key signature requires accidental but natural key is pressed, or vice versa, reject input
-            if (requiresBlackKey !== isBlackKey) {
-                console.log(`MIDI input rejected: Key signature ${pianoModeSettings.keySignature} requires ${requiresBlackKey ? 'black' : 'white'} key, but ${isBlackKey ? 'black' : 'white'} key was pressed`);
-                // Could add visual feedback here for incorrect key signature
-                return;
-            }
-        }
         // Get the appropriate note for the game based on Piano Mode settings
         const noteForGame = getNaturalNoteForGame(noteMapping.midiNote);
         // In hard mode, determine which clef this MIDI note should affect
@@ -394,50 +371,6 @@ else {
     // Then initialize MIDI integration
     initializeMidiIntegration();
 }
-/**
- * Handle level progression and automatic key signature changes
- * Call this function when the game level changes
- * @param newLevel The new level number
- */
-export function handleLevelChange(newLevel) {
-    if (pianoModeSettings.isActive && pianoModeSettings.changeKeys && newLevel > 1) {
-        const currentKey = pianoModeSettings.keySignature || 'C';
-        const newKey = getNextKeySignature(currentKey);
-        if (newKey !== currentKey) {
-            console.log(`Level ${newLevel}: Changing key signature from ${currentKey} to ${newKey}`);
-            pianoModeSettings.keySignature = newKey;
-            // Save the updated settings
-            savePianoModeSettings();
-            // Show notification to user about key change
-            showKeyChangeNotification(newKey);
-        }
-    }
-}
-/**
- * Show notification about key signature change
- * @param newKey The new key signature
- */
-function showKeyChangeNotification(newKey) {
-    // This would ideally show a visual notification in the game
-    // For now, we'll just log it
-    console.log(`Key signature changed to: ${newKey}`);
-    // If there's a notification system, use it
-    if (typeof showMidiNotification === 'function') {
-        const keyInfo = getKeySignatureInfo ? getKeySignatureInfo(newKey) : { name: newKey };
-        showMidiNotification(`Key changed to ${keyInfo.name || newKey}`, 'info');
-    }
-}
-/**
- * Save Piano Mode settings to localStorage
- */
-function savePianoModeSettings() {
-    try {
-        localStorage.setItem('pianoModeSettings', JSON.stringify(pianoModeSettings));
-    }
-    catch (error) {
-        console.warn('Could not save Piano Mode settings:', error);
-    }
-}
 // Expose functions globally for integration with existing game code
 window.handleDeviceSelection = handleDeviceSelection;
 window.isPianoModeActive = () => pianoModeSettings.isActive;
@@ -445,5 +378,4 @@ window.getPianoModeSettings = getPianoModeSettings;
 window.getMenuMidiStatus = () => midiManager.getStatus();
 window.reinitializeMidiAfterRestart = reinitializeMidiAfterRestart;
 window.updateMidiPianoModeSettings = updatePianoModeSettings;
-window.handleLevelChange = handleLevelChange;
 //# sourceMappingURL=midi-integration.js.map

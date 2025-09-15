@@ -28,8 +28,6 @@ export interface PianoModeSettings {
     leftHand?: 'none' | 'melody' | 'chords';
     rightHand?: 'none' | 'melody' | 'chords';
     hardMode?: boolean;
-    keySignature?: string;
-    changeKeys?: boolean;
 }
 export interface MidiConnectionStatus {
     isSupported: boolean;

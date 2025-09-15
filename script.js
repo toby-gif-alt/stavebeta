@@ -2481,11 +2481,6 @@ async function handleNoteInputWithOctave(userNote, userOctave, targetClef) {
       level++;
       correctAnswers = 0;
       
-      // Notify MIDI integration about level change for key signature changes
-      if (typeof window.handleLevelChange === 'function') {
-        window.handleLevelChange(level);
-      }
-      
       // Clear all notes on screen when advancing to new level
       movingNotes = [];
       
